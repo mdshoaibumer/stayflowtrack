@@ -30,4 +30,4 @@ CREATE INDEX idx_housekeeping_tasks_unit ON housekeeping_tasks(unit_id, status);
 
 CREATE TRIGGER update_housekeeping_tasks_updated_at
     BEFORE UPDATE ON housekeeping_tasks
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

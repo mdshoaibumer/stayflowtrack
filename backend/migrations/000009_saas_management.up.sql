@@ -93,8 +93,8 @@ CREATE INDEX idx_onboarding_checklists_tenant ON onboarding_checklists(tenant_id
 
 CREATE TRIGGER update_subscription_plans_updated_at
     BEFORE UPDATE ON subscription_plans
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_tenant_subscriptions_updated_at
     BEFORE UPDATE ON tenant_subscriptions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

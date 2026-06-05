@@ -59,4 +59,4 @@ CREATE INDEX idx_laundry_items_order ON laundry_items(order_id);
 
 CREATE TRIGGER update_laundry_orders_updated_at
     BEFORE UPDATE ON laundry_orders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

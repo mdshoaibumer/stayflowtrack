@@ -39,4 +39,4 @@ CREATE INDEX idx_notification_logs_status ON notification_logs(status, created_a
 
 CREATE TRIGGER update_notification_templates_updated_at
     BEFORE UPDATE ON notification_templates
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
