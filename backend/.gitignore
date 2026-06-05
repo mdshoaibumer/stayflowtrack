@@ -1,0 +1,24 @@
+# Binaries
+bin/
+*.exe
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage.out
+coverage.html
+
+# Uploads (local storage)
+uploads/
+
+# Vendor (optional, uncomment if vendoring)
+# vendor/
