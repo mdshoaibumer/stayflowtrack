@@ -1,0 +1,209 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  GO_VERSION: '1.25'
+  NODE_VERSION: '22'
+
+jobs:
+  # ─────────────────────────────────────────────────────────
+  # Backend: Build, Lint, Test
+  # ─────────────────────────────────────────────────────────
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: backend
+          args: --timeout=5m
+
+  backend-test:
+    name: Backend Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: stayflow
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: stayflow_track_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: stayflow
+          DB_PASSWORD: testpassword
+          DB_NAME: stayflow_track_test
+          DB_SSL_MODE: disable
+          JWT_ACCESS_SECRET: test-access-secret-minimum-32-chars
+          JWT_REFRESH_SECRET: test-refresh-secret-minimum-32-chars-different
+        run: go test ./... -v -race -count=1 -coverprofile=coverage.out
+
+      - name: Upload coverage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: backend/coverage.out
+
+  backend-build:
+    name: Backend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+
+      - name: Build
+        working-directory: backend
+        run: go build -o /dev/null ./cmd/server
+
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+
+  # ─────────────────────────────────────────────────────────
+  # Frontend: Build & Lint
+  # ─────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  # ─────────────────────────────────────────────────────────
+  # Docker: Build images (validation only)
+  # ─────────────────────────────────────────────────────────
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [backend-build, backend-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t stayflow-backend ./backend
+
+      - name: Build frontend image
+        run: docker build -t stayflow-frontend ./frontend
+
+  # ─────────────────────────────────────────────────────────
+  # Security: Dependency audit
+  # ─────────────────────────────────────────────────────────
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+
+      - name: Run govulncheck
+        working-directory: backend
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # ─────────────────────────────────────────────────────────
+  # Migration validation
+  # ─────────────────────────────────────────────────────────
+  migrations:
+    name: Migration Validation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: stayflow
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: stayflow_track_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install migrate
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xz
+          sudo mv migrate /usr/local/bin/
+
+      - name: Run migrations up
+        run: |
+          migrate -path backend/migrations \
+            -database "postgres://stayflow:testpassword@localhost:5432/stayflow_track_test?sslmode=disable" \
+            up
+
+      - name: Run migrations down (rollback test)
+        run: |
+          migrate -path backend/migrations \
+            -database "postgres://stayflow:testpassword@localhost:5432/stayflow_track_test?sslmode=disable" \
+            down -all
+
+      - name: Run migrations up again (idempotency)
+        run: |
+          migrate -path backend/migrations \
+            -database "postgres://stayflow:testpassword@localhost:5432/stayflow_track_test?sslmode=disable" \
+            up
