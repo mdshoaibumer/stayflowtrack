@@ -1,0 +1,9 @@
+{
+  "name": "StayFlow Track",
+  "short_name": "StayFlow",
+  "description": "Multi-tenant hotel property management system",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a2e"
+}
