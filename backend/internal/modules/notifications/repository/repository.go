@@ -95,7 +95,7 @@ func (r *Repository) CreateLog(ctx context.Context, log *domain.NotificationLog)
 
 func (r *Repository) ListLogs(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.NotificationLog, int64, error) {
 	var count int64
-	r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM notification_logs WHERE tenant_id = $1`, tenantID).Scan(&count)
+	_ = r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM notification_logs WHERE tenant_id = $1`, tenantID).Scan(&count)
 
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, template_id, event_type, channel, recipient_phone, recipient_email,
@@ -118,7 +118,7 @@ func (r *Repository) ListLogs(ctx context.Context, tenantID uuid.UUID, limit, of
 			return nil, 0, err
 		}
 		if payloadJSON != nil {
-			json.Unmarshal(payloadJSON, &l.Payload)
+			_ = json.Unmarshal(payloadJSON, &l.Payload)
 		}
 		logs = append(logs, l)
 	}

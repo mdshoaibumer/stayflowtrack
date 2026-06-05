@@ -30,7 +30,7 @@ func (r *Repository) CreateOrder(ctx context.Context, order *domain.LaundryOrder
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	err = tx.QueryRow(ctx,
 		`INSERT INTO laundry_orders (tenant_id, property_id, reservation_id, guest_id, folio_id, unit_id,

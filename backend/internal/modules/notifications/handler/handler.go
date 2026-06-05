@@ -159,7 +159,7 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 	h.log.Info().Str("provider", r.Header.Get("X-Provider")).Msg("notification webhook received")
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`))
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 // verifyWebhookSignature checks HMAC-SHA256 signature.

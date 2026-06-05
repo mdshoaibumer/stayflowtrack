@@ -235,7 +235,7 @@ func (s *Service) CreateCheckout(ctx context.Context, input CreateCheckoutInput)
 	}
 
 	// Log pending event
-	s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
+	_ = s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
 		TenantID:        input.TenantID,
 		EventType:       "checkout_initiated",
 		Amount:          price,
@@ -286,7 +286,7 @@ func (s *Service) VerifyPayment(ctx context.Context, input VerifyPaymentInput) e
 	}
 
 	// Log success event
-	s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
+	_ = s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
 		TenantID:          input.TenantID,
 		SubscriptionID:    &sub.ID,
 		EventType:         "payment_success",

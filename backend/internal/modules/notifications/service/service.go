@@ -135,7 +135,7 @@ func (s *Service) SendInvoice(ctx context.Context, tenantID uuid.UUID, phone, gu
 
 // SendPaymentReminder sends a payment reminder.
 func (s *Service) SendPaymentReminder(ctx context.Context, tenantID uuid.UUID, phone, guestName, amount, dueDate string) {
-	s.Send(ctx, domain.SendRequest{
+	_ = s.Send(ctx, domain.SendRequest{
 		TenantID:       tenantID,
 		EventType:      domain.EventPaymentReminder,
 		RecipientPhone: phone,

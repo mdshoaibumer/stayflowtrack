@@ -55,7 +55,7 @@ func (r *Repository) GetTenantByID(ctx context.Context, id uuid.UUID) (*domain.T
 		return nil, fmt.Errorf("get tenant: %w", err)
 	}
 
-	json.Unmarshal(settings, &t.Settings)
+	_ = json.Unmarshal(settings, &t.Settings)
 	return &t, nil
 }
 
@@ -75,7 +75,7 @@ func (r *Repository) GetTenantBySlug(ctx context.Context, slug string) (*domain.
 		return nil, fmt.Errorf("get tenant by slug: %w", err)
 	}
 
-	json.Unmarshal(settings, &t.Settings)
+	_ = json.Unmarshal(settings, &t.Settings)
 	return &t, nil
 }
 

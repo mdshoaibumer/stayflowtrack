@@ -110,7 +110,7 @@ func (r *Repository) MoveReservation(ctx context.Context, tenantID, reservationI
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Check conflict for new position
 	var hasConflict bool
