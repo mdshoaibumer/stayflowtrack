@@ -14,7 +14,9 @@ func generatePDF(invoice *domain.Invoice) ([]byte, error) {
 	var buf bytes.Buffer
 
 	// Header
-	buf.WriteString(fmt.Sprintf("TAX INVOICE\n"))
+	buf.WriteString("========================================\n")
+	buf.WriteString("              TAX INVOICE               \n")
+	buf.WriteString("========================================\n\n")
 	buf.WriteString(fmt.Sprintf("Invoice No: %s\n", invoice.InvoiceNumber))
 	buf.WriteString(fmt.Sprintf("Date: %s\n\n", invoice.IssuedAt.Format("02-Jan-2006")))
 
