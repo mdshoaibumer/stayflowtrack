@@ -1,0 +1,116 @@
+package service
+
+import (
+	"context"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/stayflow/stayflow-track/internal/modules/dashboard/domain"
+	"github.com/stayflow/stayflow-track/internal/modules/dashboard/repository"
+)
+
+type Service struct {
+	repo  *repository.Repository
+	cache *dashboardCache
+}
+
+func New(repo *repository.Repository) *Service {
+	return &Service{
+		repo:  repo,
+		cache: newCache(30 * time.Second),
+	}
+}
+
+// GetDashboard returns all metrics with caching.
+func (s *Service) GetDashboard(ctx context.Context, tenantID, propertyID uuid.UUID) (*domain.DashboardMetrics, error) {
+	key := tenantID.String() + ":" + propertyID.String()
+
+	if cached, ok := s.cache.get(key); ok {
+		return cached, nil
+	}
+
+	var (
+		wg                                                sync.WaitGroup
+		occupancy                                         *domain.OccupancyMetric
+		revenue                                           *domain.RevenueMetric
+		ops                                               *domain.OperationsMetric
+		hk                                                *domain.StatusCounts
+		laundry                                           *domain.StatusCounts
+		payments                                          *domain.PaymentMetric
+		errOcc, errRev, errOps, errHk, errLaundry, errPay error
+	)
+
+	wg.Add(6)
+	go func() { defer wg.Done(); occupancy, errOcc = s.repo.GetOccupancy(ctx, tenantID, propertyID) }()
+	go func() { defer wg.Done(); revenue, errRev = s.repo.GetRevenue(ctx, tenantID, propertyID) }()
+	go func() { defer wg.Done(); ops, errOps = s.repo.GetOperations(ctx, tenantID, propertyID) }()
+	go func() { defer wg.Done(); hk, errHk = s.repo.GetHousekeepingStats(ctx, tenantID, propertyID) }()
+	go func() { defer wg.Done(); laundry, errLaundry = s.repo.GetLaundryStats(ctx, tenantID, propertyID) }()
+	go func() { defer wg.Done(); payments, errPay = s.repo.GetPendingPayments(ctx, tenantID, propertyID) }()
+	wg.Wait()
+
+	for _, err := range []error{errOcc, errRev, errOps, errHk, errLaundry, errPay} {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	metrics := &domain.DashboardMetrics{
+		Date:            time.Now().Format("2006-01-02"),
+		Occupancy:       *occupancy,
+		Revenue:         *revenue,
+		Operations:      *ops,
+		Housekeeping:    *hk,
+		Laundry:         *laundry,
+		PendingPayments: *payments,
+	}
+
+	s.cache.set(key, metrics)
+	return metrics, nil
+}
+
+func (s *Service) GetRevenueTrend(ctx context.Context, tenantID, propertyID uuid.UUID, days int) ([]domain.RevenueTrend, error) {
+	if days <= 0 || days > 90 {
+		days = 30
+	}
+	return s.repo.GetRevenueTrend(ctx, tenantID, propertyID, days)
+}
+
+// In-memory cache with TTL.
+type dashboardCache struct {
+	mu    sync.RWMutex
+	items map[string]*cacheEntry
+	ttl   time.Duration
+}
+
+type cacheEntry struct {
+	data      *domain.DashboardMetrics
+	expiresAt time.Time
+}
+
+func newCache(ttl time.Duration) *dashboardCache {
+	return &dashboardCache{
+		items: make(map[string]*cacheEntry),
+		ttl:   ttl,
+	}
+}
+
+func (c *dashboardCache) get(key string) (*domain.DashboardMetrics, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	entry, ok := c.items[key]
+	if !ok || time.Now().After(entry.expiresAt) {
+		return nil, false
+	}
+	return entry.data, true
+}
+
+func (c *dashboardCache) set(key string, data *domain.DashboardMetrics) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items[key] = &cacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(c.ttl),
+	}
+}
