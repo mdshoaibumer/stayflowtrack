@@ -62,7 +62,7 @@ func (s *Service) ExtendStay(ctx context.Context, tenantID, userID uuid.UUID, in
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Get current reservation
 	var unitID uuid.UUID
@@ -154,7 +154,7 @@ func (s *Service) MoveRoom(ctx context.Context, tenantID, userID uuid.UUID, inpu
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Get current unit
 	var fromUnitID uuid.UUID

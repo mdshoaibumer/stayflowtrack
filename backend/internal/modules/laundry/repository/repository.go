@@ -199,7 +199,7 @@ func (r *Repository) PostToFolio(ctx context.Context, orderID, tenantID, userID 
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var folioID uuid.UUID
 	var grandTotal, taxAmount float64

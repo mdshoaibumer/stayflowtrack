@@ -115,7 +115,7 @@ func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (*domain.Use
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
 
-	json.Unmarshal(perms, &u.RolePermissions)
+	_ = json.Unmarshal(perms, &u.RolePermissions)
 	return &u, nil
 }
 
@@ -140,7 +140,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*domain.
 		return nil, fmt.Errorf("get user by email: %w", err)
 	}
 
-	json.Unmarshal(perms, &u.RolePermissions)
+	_ = json.Unmarshal(perms, &u.RolePermissions)
 	return &u, nil
 }
 
@@ -169,7 +169,7 @@ func (r *Repository) GetUserByEmailAndTenant(ctx context.Context, email, tenantS
 		return nil, fmt.Errorf("get user by email and tenant: %w", err)
 	}
 
-	json.Unmarshal(perms, &u.RolePermissions)
+	_ = json.Unmarshal(perms, &u.RolePermissions)
 	return &u, nil
 }
 
@@ -223,7 +223,7 @@ func (r *Repository) GetRoleByName(ctx context.Context, name string) (*domain.Ro
 		return nil, fmt.Errorf("get role: %w", err)
 	}
 
-	json.Unmarshal(perms, &role.Permissions)
+	_ = json.Unmarshal(perms, &role.Permissions)
 	return &role, nil
 }
 

@@ -1,0 +1,12 @@
+# StayFlow Track - Logrotate Configuration
+# Install: sudo cp deploy/logrotate-stayflow /etc/logrotate.d/stayflow
+
+/var/log/stayflow-*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 root root
+}

@@ -30,7 +30,7 @@ docker exec "${DB_CONTAINER}" pg_dump \
     --no-acl \
     > "${BACKUP_DIR}/${BACKUP_FILE}"
 
-FILESIZE=$(stat -f%z "${BACKUP_DIR}/${BACKUP_FILE}" 2>/dev/null || stat -c%s "${BACKUP_DIR}/${BACKUP_FILE}")
+FILESIZE=$(stat -c%s "${BACKUP_DIR}/${BACKUP_FILE}" 2>/dev/null || stat -f%z "${BACKUP_DIR}/${BACKUP_FILE}" 2>/dev/null || wc -c < "${BACKUP_DIR}/${BACKUP_FILE}")
 echo "[$(date)] Backup created: ${BACKUP_FILE} (${FILESIZE} bytes)"
 
 # Upload to S3 if configured

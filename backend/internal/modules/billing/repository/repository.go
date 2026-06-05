@@ -71,7 +71,7 @@ func (r *Repository) AddLineItem(ctx context.Context, item *domain.LineItem) err
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Verify folio is open
 	var folioStatus string
@@ -122,7 +122,7 @@ func (r *Repository) VoidLineItem(ctx context.Context, itemID, tenantID uuid.UUI
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var folioID uuid.UUID
 	result, err := tx.Exec(ctx,
@@ -184,7 +184,7 @@ func (r *Repository) RecordPayment(ctx context.Context, payment *domain.Payment)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Insert payment
 	err = tx.QueryRow(ctx,

@@ -18,9 +18,16 @@ services:
     environment:
       DOMAIN_API: ${DOMAIN_API:-api.localhost}
       DOMAIN_APP: ${DOMAIN_APP:-app.localhost}
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:
@@ -39,6 +46,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
     restart: unless-stopped
 
   minio:
@@ -120,6 +132,17 @@ services:
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
       PLATFORM_TENANT_ID: ${PLATFORM_TENANT_ID:-}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     depends_on:
       postgres:
         condition: service_healthy
@@ -134,6 +157,17 @@ services:
     container_name: stayflow-frontend
     environment:
       NEXT_PUBLIC_API_URL: https://${DOMAIN_API}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     depends_on:
       - backend
     restart: unless-stopped

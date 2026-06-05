@@ -148,7 +148,7 @@ func (r *Repository) ListUnitTypesByProperty(ctx context.Context, propertyID, te
 			&ut.BaseRate, &ut.MaxOccupancy, &amenities, &ut.CreatedAt, &ut.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan unit type: %w", err)
 		}
-		json.Unmarshal(amenities, &ut.Amenities)
+		_ = json.Unmarshal(amenities, &ut.Amenities)
 		unitTypes = append(unitTypes, ut)
 	}
 
