@@ -76,12 +76,12 @@ export default function SaaSAdminDashboard() {
   const fetchData = useCallback(async () => {
     try {
       const [metricsRes, tenantsRes, plansRes] = await Promise.all([
-        apiClient.get('/admin/metrics'),
-        apiClient.get(`/admin/tenants${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`),
-        apiClient.get('/admin/plans'),
+        apiClient.get<SaaSMetrics>('/admin/metrics'),
+        apiClient.get<{ data: TenantOverview[] }>(`/admin/tenants${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`),
+        apiClient.get<SubscriptionPlan[]>('/admin/plans'),
       ]);
-      setMetrics(metricsRes.data);
-      setTenants(tenantsRes.data.data || []);
+      setMetrics(metricsRes.data ?? null);
+      setTenants(tenantsRes.data?.data || []);
       setPlans(plansRes.data || []);
     } catch (err) {
       console.error('Failed to load SaaS admin data:', err);

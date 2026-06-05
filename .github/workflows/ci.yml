@@ -29,7 +29,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: v2.1.6
-          install-mode: goinstall
+          install-mode: binary
           working-directory: backend
           args: --timeout=5m
 
