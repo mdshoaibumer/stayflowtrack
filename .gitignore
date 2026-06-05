@@ -15,6 +15,7 @@
 .vscode/
 *.swp
 *.swo
+.copilot-bridge.json
 
 # OS
 .DS_Store
