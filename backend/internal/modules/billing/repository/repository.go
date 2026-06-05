@@ -200,12 +200,13 @@ func (r *Repository) RecordPayment(ctx context.Context, payment *domain.Payment)
 	}
 
 	// Update folio paid amount and balance
-	if payment.PaymentType == domain.PaymentTypePayment || payment.PaymentType == domain.PaymentTypeDeposit {
+	switch payment.PaymentType {
+	case domain.PaymentTypePayment, domain.PaymentTypeDeposit:
 		_, err = tx.Exec(ctx,
 			`UPDATE folios SET paid_amount = paid_amount + $2, balance = balance - $2 WHERE id = $1`,
 			payment.FolioID, payment.Amount,
 		)
-	} else if payment.PaymentType == domain.PaymentTypeRefund || payment.PaymentType == domain.PaymentTypeDepositRelease {
+	case domain.PaymentTypeRefund, domain.PaymentTypeDepositRelease:
 		_, err = tx.Exec(ctx,
 			`UPDATE folios SET paid_amount = paid_amount - $2, balance = balance + $2 WHERE id = $1`,
 			payment.FolioID, payment.Amount,

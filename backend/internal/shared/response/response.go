@@ -31,7 +31,7 @@ type Meta struct {
 func JSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(APIResponse{
+	_ = json.NewEncoder(w).Encode(APIResponse{
 		Success: true,
 		Data:    data,
 	})
@@ -40,7 +40,7 @@ func JSON(w http.ResponseWriter, status int, data any) {
 func JSONWithMeta(w http.ResponseWriter, status int, data any, meta *Meta) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(APIResponse{
+	_ = json.NewEncoder(w).Encode(APIResponse{
 		Success: true,
 		Data:    data,
 		Meta:    meta,
@@ -52,7 +52,7 @@ func Err(w http.ResponseWriter, err error) {
 	if errors.As(err, &appErr) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(appErr.HTTPStatus)
-		json.NewEncoder(w).Encode(APIResponse{
+		_ = json.NewEncoder(w).Encode(APIResponse{
 			Success: false,
 			Error: &Error{
 				Code:    string(appErr.Code),
@@ -65,7 +65,7 @@ func Err(w http.ResponseWriter, err error) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
-	json.NewEncoder(w).Encode(APIResponse{
+	_ = json.NewEncoder(w).Encode(APIResponse{
 		Success: false,
 		Error: &Error{
 			Code:    "INTERNAL_ERROR",

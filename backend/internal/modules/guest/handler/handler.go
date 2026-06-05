@@ -174,7 +174,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		response.Err(w, apperrors.BadRequest("document file is required"))
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	documentType := r.FormValue("document_type")
 	if documentType == "" {

@@ -40,7 +40,7 @@ func (l *LocalStore) Upload(ctx context.Context, key string, reader io.Reader, c
 	if err != nil {
 		return nil, fmt.Errorf("create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	written, err := io.Copy(file, reader)
 	if err != nil {

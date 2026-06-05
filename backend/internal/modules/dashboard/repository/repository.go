@@ -96,7 +96,7 @@ func (r *Repository) GetPendingPayments(ctx context.Context, tenantID, propertyI
 	}
 
 	// Overdue invoices
-	r.pool.QueryRow(ctx,
+	_ = r.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM invoices
 		 WHERE tenant_id = $1 AND property_id = $2 AND status IN ('issued', 'partially_paid') AND due_date < NOW()`,
 		tenantID, propertyID,

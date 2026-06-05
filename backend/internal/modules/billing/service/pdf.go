@@ -21,7 +21,7 @@ func generatePDF(invoice *domain.Invoice) ([]byte, error) {
 	buf.WriteString(fmt.Sprintf("Date: %s\n\n", invoice.IssuedAt.Format("02-Jan-2006")))
 
 	// Property details
-	buf.WriteString(fmt.Sprintf("FROM:\n"))
+	buf.WriteString("FROM:\n")
 	buf.WriteString(fmt.Sprintf("%s\n", invoice.PropertyName))
 	buf.WriteString(fmt.Sprintf("%s\n", invoice.PropertyAddress))
 	if invoice.PropertyGST != "" {
@@ -30,7 +30,7 @@ func generatePDF(invoice *domain.Invoice) ([]byte, error) {
 	buf.WriteString("\n")
 
 	// Guest details
-	buf.WriteString(fmt.Sprintf("BILL TO:\n"))
+	buf.WriteString("BILL TO:\n")
 	buf.WriteString(fmt.Sprintf("%s\n", invoice.GuestName))
 	if invoice.GuestPhone != "" {
 		buf.WriteString(fmt.Sprintf("Phone: %s\n", invoice.GuestPhone))
@@ -44,7 +44,7 @@ func generatePDF(invoice *domain.Invoice) ([]byte, error) {
 	buf.WriteString("\n")
 
 	// Stay details
-	buf.WriteString(fmt.Sprintf("Stay Details:\n"))
+	buf.WriteString("Stay Details:\n")
 	buf.WriteString(fmt.Sprintf("Check-in: %s\n", invoice.CheckInDate.Format("02-Jan-2006")))
 	buf.WriteString(fmt.Sprintf("Check-out: %s\n", invoice.CheckOutDate.Format("02-Jan-2006")))
 	buf.WriteString(fmt.Sprintf("Nights: %d\n\n", invoice.NumNights))

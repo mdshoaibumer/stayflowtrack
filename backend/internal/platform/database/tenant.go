@@ -25,7 +25,7 @@ func WithTenantTransaction(ctx context.Context, pool *pgxpool.Pool, tenantID uui
 	if err != nil {
 		return fmt.Errorf("begin tenant tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Set tenant context for RLS using parameterized set_config
 	_, err = tx.Exec(ctx, "SELECT set_config('app.current_tenant_id', $1, true)", tenantID.String())

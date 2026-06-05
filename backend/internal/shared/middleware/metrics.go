@@ -58,7 +58,7 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"` + dbOK + `","active_requests":` +
+	_, _ = w.Write([]byte(`{"status":"` + dbOK + `","active_requests":` +
 		strconv.FormatInt(GlobalMetrics.ActiveRequests.Load(), 10) +
 		`,"total_requests":` + strconv.FormatInt(GlobalMetrics.TotalRequests.Load(), 10) +
 		`,"total_errors":` + strconv.FormatInt(GlobalMetrics.TotalErrors.Load(), 10) + `}`))
@@ -67,9 +67,9 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 func (h *HealthHandler) Ready(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbCheck(); err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(`{"ready":false}`))
+		_, _ = w.Write([]byte(`{"ready":false}`))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"ready":true}`))
+	_, _ = w.Write([]byte(`{"ready":true}`))
 }

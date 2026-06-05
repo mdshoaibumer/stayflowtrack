@@ -99,7 +99,7 @@ func (s *Service) CreateSubscription(ctx context.Context, input domain.CreateSub
 	}
 
 	// Log billing event
-	s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
+	_ = s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
 		TenantID:       input.TenantID,
 		SubscriptionID: &sub.ID,
 		EventType:      "subscription_created",
@@ -142,7 +142,7 @@ func (s *Service) ChangePlan(ctx context.Context, input domain.ChangePlanInput) 
 		return nil, err
 	}
 
-	s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
+	_ = s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
 		TenantID:       input.TenantID,
 		SubscriptionID: &sub.ID,
 		EventType:      "plan_changed",
@@ -168,7 +168,7 @@ func (s *Service) CancelSubscription(ctx context.Context, input domain.CancelSub
 		return err
 	}
 
-	s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
+	_ = s.repo.CreateBillingEvent(ctx, &domain.BillingEvent{
 		TenantID:       input.TenantID,
 		SubscriptionID: &sub.ID,
 		EventType:      "subscription_cancelled",

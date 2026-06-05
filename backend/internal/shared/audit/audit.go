@@ -49,7 +49,7 @@ func New(pool *pgxpool.Pool) *Logger {
 
 // Log records an audit entry asynchronously (fire and forget for non-critical path).
 func (l *Logger) Log(ctx context.Context, entry Entry) {
-	go l.write(context.Background(), entry)
+	go func() { _ = l.write(context.Background(), entry) }()
 }
 
 // LogSync records an audit entry synchronously (for critical operations).

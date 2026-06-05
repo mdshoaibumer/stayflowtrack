@@ -50,7 +50,7 @@ func (r *Repository) ListPlans(ctx context.Context, activeOnly bool) ([]domain.S
 			&p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan plan: %w", err)
 		}
-		json.Unmarshal(featuresJSON, &p.Features)
+		_ = json.Unmarshal(featuresJSON, &p.Features)
 		plans = append(plans, p)
 	}
 	if plans == nil {
@@ -77,7 +77,7 @@ func (r *Repository) GetPlanBySlug(ctx context.Context, slug string) (*domain.Su
 	if err != nil {
 		return nil, fmt.Errorf("get plan: %w", err)
 	}
-	json.Unmarshal(featuresJSON, &p.Features)
+	_ = json.Unmarshal(featuresJSON, &p.Features)
 	return &p, nil
 }
 
@@ -162,7 +162,7 @@ func (r *Repository) CreateBillingEvent(ctx context.Context, event *domain.Billi
 
 func (r *Repository) ListBillingEvents(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.BillingEvent, int64, error) {
 	var count int64
-	r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM billing_events WHERE tenant_id = $1`, tenantID).Scan(&count)
+	_ = r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM billing_events WHERE tenant_id = $1`, tenantID).Scan(&count)
 
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, subscription_id, event_type, amount, currency,
@@ -184,7 +184,7 @@ func (r *Repository) ListBillingEvents(ctx context.Context, tenantID uuid.UUID, 
 			return nil, 0, err
 		}
 		if metaJSON != nil {
-			json.Unmarshal(metaJSON, &e.Metadata)
+			_ = json.Unmarshal(metaJSON, &e.Metadata)
 		}
 		events = append(events, e)
 	}
@@ -271,7 +271,7 @@ func (r *Repository) CompleteStep(ctx context.Context, tenantID, propertyID uuid
 
 func (r *Repository) ListTenants(ctx context.Context, status string, limit, offset int) ([]domain.TenantOverview, int64, error) {
 	var count int64
-	r.pool.QueryRow(ctx,
+	_ = r.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM tenants WHERE ($1::VARCHAR = '' OR status = $1)`, status,
 	).Scan(&count)
 

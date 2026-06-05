@@ -64,13 +64,13 @@ func (p *GupshupProvider) SendWhatsApp(ctx context.Context, phone string, templa
 	if err != nil {
 		return nil, fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
 		Status    string `json:"status"`
 		MessageID string `json:"messageId"`
 	}
-	json.NewDecoder(resp.Body).Decode(&result)
+	_ = json.NewDecoder(resp.Body).Decode(&result)
 
 	if resp.StatusCode >= 400 {
 		return &domain.ProviderResponse{Error: fmt.Errorf("gupshup error: status %d", resp.StatusCode)}, nil

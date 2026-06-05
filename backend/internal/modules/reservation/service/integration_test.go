@@ -219,6 +219,7 @@ func TestMultiTenantIsolation(t *testing.T) {
 	}
 
 	// Verify that tenant context is propagated (compile-time validation)
-	_ = context.WithValue(context.Background(), "tenant_id", tenantA)
-	_ = context.WithValue(context.Background(), "tenant_id", tenantB)
+	type ctxKey string
+	_ = context.WithValue(context.Background(), ctxKey("tenant_id"), tenantA)
+	_ = context.WithValue(context.Background(), ctxKey("tenant_id"), tenantB)
 }

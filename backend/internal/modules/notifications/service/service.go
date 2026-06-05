@@ -90,7 +90,7 @@ func (s *Service) Send(ctx context.Context, req domain.SendRequest) error {
 
 // SendBookingConfirmation sends a booking confirmation notification.
 func (s *Service) SendBookingConfirmation(ctx context.Context, tenantID uuid.UUID, phone, guestName, propertyName, checkIn, checkOut, confirmationNo string) {
-	s.Send(ctx, domain.SendRequest{
+	_ = s.Send(ctx, domain.SendRequest{
 		TenantID:       tenantID,
 		EventType:      domain.EventBookingConfirmation,
 		RecipientPhone: phone,
@@ -106,7 +106,7 @@ func (s *Service) SendBookingConfirmation(ctx context.Context, tenantID uuid.UUI
 
 // SendCheckInReminder sends a check-in reminder (typically 1 day before).
 func (s *Service) SendCheckInReminder(ctx context.Context, tenantID uuid.UUID, phone, guestName, propertyName, checkIn string) {
-	s.Send(ctx, domain.SendRequest{
+	_ = s.Send(ctx, domain.SendRequest{
 		TenantID:       tenantID,
 		EventType:      domain.EventCheckInReminder,
 		RecipientPhone: phone,
@@ -120,7 +120,7 @@ func (s *Service) SendCheckInReminder(ctx context.Context, tenantID uuid.UUID, p
 
 // SendInvoice sends the invoice via WhatsApp.
 func (s *Service) SendInvoice(ctx context.Context, tenantID uuid.UUID, phone, guestName, invoiceNo, amount, pdfURL string) {
-	s.Send(ctx, domain.SendRequest{
+	_ = s.Send(ctx, domain.SendRequest{
 		TenantID:       tenantID,
 		EventType:      domain.EventInvoiceDelivery,
 		RecipientPhone: phone,

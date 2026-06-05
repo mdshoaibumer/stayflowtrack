@@ -67,7 +67,7 @@ func (r *Repository) PerformCheckIn(ctx context.Context, tenantID uuid.UUID, inp
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// 1. Update reservation status to checked_in
 	result, err := tx.Exec(ctx,
@@ -201,7 +201,7 @@ func (r *Repository) PerformCheckOut(ctx context.Context, tenantID uuid.UUID, in
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// 1. Update reservation status
 	result, err := tx.Exec(ctx,
