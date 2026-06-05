@@ -42,6 +42,9 @@ func TestDashboardCache(t *testing.T) {
 		if m.ThisWeek.LessThan(m.Today) {
 			t.Error("weekly revenue should be >= daily")
 		}
+		if m.Currency != "INR" {
+			t.Errorf("expected currency INR, got %s", m.Currency)
+		}
 	})
 
 	t.Run("operations metrics structure", func(t *testing.T) {
@@ -53,6 +56,12 @@ func TestDashboardCache(t *testing.T) {
 		}
 		if m.CheckInsToday < 0 || m.CheckOutsToday < 0 {
 			t.Error("counts should be non-negative")
+		}
+		if m.ExpectedArrivals < m.CheckInsToday {
+			t.Error("expected arrivals should be >= check-ins")
+		}
+		if m.ExpectedDeparts < m.CheckOutsToday {
+			t.Error("expected departs should be >= check-outs")
 		}
 	})
 
