@@ -523,7 +523,7 @@ func (r *Repository) GetFolioSummary(ctx context.Context, tenantID uuid.UUID, in
 	expectedCheckout := time.Date(info.CheckOutDate.Year(), info.CheckOutDate.Month(), info.CheckOutDate.Day(), 11, 0, 0, 0, time.Local)
 	if time.Now().After(expectedCheckout) {
 		isLate = true
-		lateHours = time.Now().Sub(expectedCheckout).Hours()
+		lateHours = time.Since(expectedCheckout).Hours()
 	}
 
 	// Get deposit held

@@ -83,7 +83,7 @@ func (s *Service) CheckOut(ctx context.Context, tenantID, userID uuid.UUID, inpu
 	if input.LateCheckoutCharge.IsZero() {
 		expectedCheckout := time.Date(info.CheckOutDate.Year(), info.CheckOutDate.Month(), info.CheckOutDate.Day(), 11, 0, 0, 0, time.Local)
 		if time.Now().After(expectedCheckout) {
-			lateHours := time.Now().Sub(expectedCheckout).Hours()
+			lateHours := time.Since(expectedCheckout).Hours()
 			// Auto-calculate: half-day rate for 1-4 hours, full-day for 4+ hours
 			if lateHours > 4 {
 				input.LateCheckoutCharge = info.RatePerNight

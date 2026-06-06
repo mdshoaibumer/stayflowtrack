@@ -100,10 +100,10 @@ func generatePDF(invoice *domain.Invoice) ([]byte, error) {
 		pdf.CellFormat(52, 6, truncateStr(item.Description, 35), "1", 0, "L", false, 0, "")
 		pdf.CellFormat(18, 6, sacCode, "1", 0, "C", false, 0, "")
 		pdf.CellFormat(12, 6, fmt.Sprintf("%d", item.Quantity), "1", 0, "C", false, 0, "")
-		pdf.CellFormat(25, 6, fmt.Sprintf("%s", item.UnitPrice.StringFixed(2)), "1", 0, "R", false, 0, "")
-		pdf.CellFormat(18, 6, fmt.Sprintf("%s%%", item.TaxRate.StringFixed(0)), "1", 0, "C", false, 0, "")
-		pdf.CellFormat(22, 6, fmt.Sprintf("%s", item.TaxAmount.StringFixed(2)), "1", 0, "R", false, 0, "")
-		pdf.CellFormat(25, 6, fmt.Sprintf("%s", item.Total.StringFixed(2)), "1", 1, "R", false, 0, "")
+		pdf.CellFormat(25, 6, item.UnitPrice.StringFixed(2), "1", 0, "R", false, 0, "")
+		pdf.CellFormat(18, 6, item.TaxRate.StringFixed(0)+"%%", "1", 0, "C", false, 0, "")
+		pdf.CellFormat(22, 6, item.TaxAmount.StringFixed(2), "1", 0, "R", false, 0, "")
+		pdf.CellFormat(25, 6, item.Total.StringFixed(2), "1", 1, "R", false, 0, "")
 	}
 
 	pdf.Ln(4)

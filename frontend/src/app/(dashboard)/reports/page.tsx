@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 
@@ -385,7 +385,7 @@ export default function ReportsPage() {
               <button
                 onClick={async () => {
                   setShowCloseDayConfirm(false);
-                  await api.post(`/api/v1/dashboard/${propertyId}/close-day`, {}, { date: dateRange.start });
+                  await api.post(`/api/v1/dashboard/${propertyId}/close-day`, { date: dateRange.start });
                   generateReport();
                 }}
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
