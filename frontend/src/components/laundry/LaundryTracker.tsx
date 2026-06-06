@@ -138,12 +138,12 @@ function OrderCard({ order, onStatusChange, onPostToFolio }: {
       </div>
 
       <div className="flex gap-2 justify-end">
-        {order.order_type === "guest" && !order.posted_to_folio && order.status !== "received" && (
+        {order.order_type === "guest" && !order.posted_to_folio && (
           <button
             onClick={() => onPostToFolio(order.id)}
             className="text-xs px-3 py-1 border border-orange-500 text-orange-600 rounded hover:bg-orange-50"
           >
-            Post to Folio
+            Add to Guest Bill
           </button>
         )}
         {nextStatus && (
