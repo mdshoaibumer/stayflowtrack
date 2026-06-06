@@ -51,9 +51,22 @@ func (h *Handler) GetRevenueTrend(w http.ResponseWriter, r *http.Request) {
 
 	days := 30
 	if d := r.URL.Query().Get("days"); d != "" {
-		if parsed, err := strconv.Atoi(d); err == nil {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 && parsed <= 90 {
 			days = parsed
 		}
+	}
+
+	// Support start_date/end_date for revenue report date picker
+	startDate := r.URL.Query().Get("start_date")
+	endDate := r.URL.Query().Get("end_date")
+	if startDate != "" && endDate != "" {
+		trends, err := h.service.GetRevenueTrendByRange(r.Context(), claims.TenantID, propertyID, startDate, endDate)
+		if err != nil {
+			response.Err(w, err)
+			return
+		}
+		response.JSON(w, http.StatusOK, trends)
+		return
 	}
 
 	trends, err := h.service.GetRevenueTrend(r.Context(), claims.TenantID, propertyID, days)
@@ -63,4 +76,90 @@ func (h *Handler) GetRevenueTrend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(w, http.StatusOK, trends)
+}
+
+// GetDailyCollection returns today's payment breakdown by method.
+func (h *Handler) GetDailyCollection(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+	propertyID, err := uuid.Parse(chi.URLParam(r, "propertyID"))
+	if err != nil {
+		response.Err(w, apperrors.BadRequest("invalid property id"))
+		return
+	}
+
+	date := r.URL.Query().Get("date")
+	if date == "" {
+		date = "today"
+	}
+
+	collection, err := h.service.GetDailyCollection(r.Context(), claims.TenantID, propertyID, date)
+	if err != nil {
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, collection)
+}
+
+// GetOutstandingDues returns all guests with pending balances.
+func (h *Handler) GetOutstandingDues(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+	propertyID, err := uuid.Parse(chi.URLParam(r, "propertyID"))
+	if err != nil {
+		response.Err(w, apperrors.BadRequest("invalid property id"))
+		return
+	}
+
+	report, err := h.service.GetOutstandingDues(r.Context(), claims.TenantID, propertyID)
+	if err != nil {
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, report)
+}
+
+// GetEndOfDaySummary returns the comprehensive night audit report.
+func (h *Handler) GetEndOfDaySummary(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+	propertyID, err := uuid.Parse(chi.URLParam(r, "propertyID"))
+	if err != nil {
+		response.Err(w, apperrors.BadRequest("invalid property id"))
+		return
+	}
+
+	date := r.URL.Query().Get("date")
+	if date == "" {
+		date = "today"
+	}
+
+	summary, err := h.service.GetEndOfDaySummary(r.Context(), claims.TenantID, propertyID, date)
+	if err != nil {
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, summary)
+}
+
+// CloseDay marks the day as audited/closed.
+func (h *Handler) CloseDay(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+	propertyID, err := uuid.Parse(chi.URLParam(r, "propertyID"))
+	if err != nil {
+		response.Err(w, apperrors.BadRequest("invalid property id"))
+		return
+	}
+
+	date := r.URL.Query().Get("date")
+	if date == "" {
+		date = "today"
+	}
+
+	if err := h.service.CloseDay(r.Context(), claims.TenantID, propertyID, claims.UserID, date); err != nil {
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]string{"status": "closed"})
 }

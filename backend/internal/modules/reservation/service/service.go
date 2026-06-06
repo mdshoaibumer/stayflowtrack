@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
+	notifservice "github.com/stayflow/stayflow-track/internal/modules/notifications/service"
 	"github.com/stayflow/stayflow-track/internal/modules/reservation/domain"
 	resrepo "github.com/stayflow/stayflow-track/internal/modules/reservation/repository"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
@@ -17,10 +18,11 @@ import (
 type Service struct {
 	repo     *resrepo.Repository
 	propRepo PropertyReader
+	notifSvc *notifservice.Service
 }
 
-func New(repo *resrepo.Repository, propRepo PropertyReader) *Service {
-	return &Service{repo: repo, propRepo: propRepo}
+func New(repo *resrepo.Repository, propRepo PropertyReader, notifSvc *notifservice.Service) *Service {
+	return &Service{repo: repo, propRepo: propRepo, notifSvc: notifSvc}
 }
 
 type CreateReservationInput struct {
@@ -34,6 +36,9 @@ type CreateReservationInput struct {
 	RatePerNight      decimal.Decimal `json:"rate_per_night" validate:"required"`
 	Notes             string          `json:"notes" validate:"omitempty,max=1000"`
 	ExternalBookingID string          `json:"external_booking_id" validate:"omitempty,max=255"`
+	AdvanceAmount     decimal.Decimal `json:"advance_amount"`
+	AdvanceMethod     string          `json:"advance_method" validate:"omitempty,oneof=cash upi card bank_transfer cheque"`
+	AdvanceReference  string          `json:"advance_reference" validate:"omitempty,max=255"`
 }
 
 type UpdateReservationInput struct {
@@ -107,6 +112,9 @@ func (s *Service) CreateReservation(ctx context.Context, tenantID uuid.UUID, inp
 		NumGuests:         input.NumGuests,
 		RatePerNight:      input.RatePerNight,
 		TotalAmount:       totalAmount,
+		AdvanceAmount:     input.AdvanceAmount,
+		AdvanceMethod:     input.AdvanceMethod,
+		AdvanceReference:  input.AdvanceReference,
 		Notes:             input.Notes,
 		ExternalBookingID: input.ExternalBookingID,
 	}
@@ -117,6 +125,18 @@ func (s *Service) CreateReservation(ctx context.Context, tenantID uuid.UUID, inp
 
 	// Update unit status to reserved
 	_ = s.repo.UpdateUnitStatus(ctx, input.UnitID, "reserved")
+
+	// Send booking confirmation notification (async, non-blocking)
+	if s.notifSvc != nil {
+		go s.notifSvc.SendBookingConfirmation(context.Background(), tenantID,
+			"", // phone will be looked up from guest
+			"", // guest name
+			"", // property name
+			input.CheckInDate,
+			input.CheckOutDate,
+			res.ID.String(),
+		)
+	}
 
 	return res, nil
 }

@@ -79,6 +79,9 @@ type Reservation struct {
 	NumGuests          int               `json:"num_guests"`
 	RatePerNight       decimal.Decimal   `json:"rate_per_night"`
 	TotalAmount        decimal.Decimal   `json:"total_amount"`
+	AdvanceAmount      decimal.Decimal   `json:"advance_amount,omitempty"`
+	AdvanceMethod      string            `json:"advance_method,omitempty"`
+	AdvanceReference   string            `json:"advance_reference,omitempty"`
 	Notes              string            `json:"notes,omitempty"`
 	CancellationReason string            `json:"cancellation_reason,omitempty"`
 	CancelledAt        *time.Time        `json:"cancelled_at,omitempty"`

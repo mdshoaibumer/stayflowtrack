@@ -284,3 +284,63 @@ func (r *Repository) GetStats(ctx context.Context, tenantID, propertyID uuid.UUI
 	}
 	return stats, nil
 }
+
+// CreateRateCard saves a default item + price for quick laundry ordering.
+func (r *Repository) CreateRateCard(ctx context.Context, tenantID uuid.UUID, input domain.CreateRateCardInput) (*domain.LaundryRateCard, error) {
+	var card domain.LaundryRateCard
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO laundry_rate_cards (tenant_id, property_id, item_type, item_name, default_rate, service_type, is_active)
+		 VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id, tenant_id, property_id, item_type, item_name, default_rate, service_type, is_active, created_at, updated_at`,
+		tenantID, input.PropertyID, input.ItemType, input.ItemName, input.DefaultRate, input.ServiceType,
+	).Scan(&card.ID, &card.TenantID, &card.PropertyID, &card.ItemType, &card.ItemName, &card.DefaultRate, &card.ServiceType, &card.IsActive, &card.CreatedAt, &card.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("create rate card: %w", err)
+	}
+	return &card, nil
+}
+
+// ListRateCards returns all rate card items for a property.
+func (r *Repository) ListRateCards(ctx context.Context, tenantID, propertyID uuid.UUID) ([]domain.LaundryRateCard, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, tenant_id, property_id, item_type, item_name, default_rate, service_type, is_active, created_at, updated_at
+		 FROM laundry_rate_cards WHERE tenant_id = $1 AND property_id = $2 AND is_active = true ORDER BY item_name`,
+		tenantID, propertyID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list rate cards: %w", err)
+	}
+	defer rows.Close()
+
+	var cards []domain.LaundryRateCard
+	for rows.Next() {
+		var c domain.LaundryRateCard
+		if err := rows.Scan(&c.ID, &c.TenantID, &c.PropertyID, &c.ItemType, &c.ItemName, &c.DefaultRate, &c.ServiceType, &c.IsActive, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		cards = append(cards, c)
+	}
+	if cards == nil {
+		cards = []domain.LaundryRateCard{}
+	}
+	return cards, nil
+}
+
+// UpdateRateCard modifies an existing rate card.
+func (r *Repository) UpdateRateCard(ctx context.Context, tenantID uuid.UUID, input domain.UpdateRateCardInput) error {
+	result, err := r.pool.Exec(ctx,
+		`UPDATE laundry_rate_cards SET
+			item_name = COALESCE(NULLIF($3, ''), item_name),
+			default_rate = CASE WHEN $4 > 0 THEN $4 ELSE default_rate END,
+			is_active = COALESCE($5, is_active),
+			updated_at = NOW()
+		 WHERE id = $2 AND tenant_id = $1`,
+		tenantID, input.ID, input.ItemName, input.DefaultRate, input.IsActive,
+	)
+	if err != nil {
+		return fmt.Errorf("update rate card: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return apperrors.NotFound("rate card", input.ID.String())
+	}
+	return nil
+}

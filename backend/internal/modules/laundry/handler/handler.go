@@ -149,3 +149,69 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, stats)
 }
+
+// CreateRateCard saves a default laundry item with pricing.
+func (h *Handler) CreateRateCard(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+
+	var input domain.CreateRateCardInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		response.Err(w, apperrors.BadRequest("invalid request body"))
+		return
+	}
+
+	if errs := validation.Validate(input); errs != nil {
+		response.Err(w, apperrors.Validation("validation failed", errs))
+		return
+	}
+
+	card, err := h.service.CreateRateCard(r.Context(), claims.TenantID, input)
+	if err != nil {
+		h.log.Error().Err(err).Msg("create rate card failed")
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusCreated, card)
+}
+
+// ListRateCards returns all saved laundry items with pricing for a property.
+func (h *Handler) ListRateCards(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+	propertyID, err := uuid.Parse(chi.URLParam(r, "propertyID"))
+	if err != nil {
+		response.Err(w, apperrors.BadRequest("invalid property id"))
+		return
+	}
+
+	cards, err := h.service.ListRateCards(r.Context(), claims.TenantID, propertyID)
+	if err != nil {
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, cards)
+}
+
+// UpdateRateCard updates rate card item details.
+func (h *Handler) UpdateRateCard(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+
+	var input domain.UpdateRateCardInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		response.Err(w, apperrors.BadRequest("invalid request body"))
+		return
+	}
+
+	if errs := validation.Validate(input); errs != nil {
+		response.Err(w, apperrors.Validation("validation failed", errs))
+		return
+	}
+
+	if err := h.service.UpdateRateCard(r.Context(), claims.TenantID, input); err != nil {
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]string{"message": "rate card updated"})
+}

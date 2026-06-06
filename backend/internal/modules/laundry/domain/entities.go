@@ -81,3 +81,32 @@ type UpdateStatusInput struct {
 	OrderID uuid.UUID `json:"order_id" validate:"required"`
 	Status  string    `json:"status" validate:"required,oneof=received washing ready delivered"`
 }
+
+// LaundryRateCard represents a saved item with default pricing.
+type LaundryRateCard struct {
+	ID          uuid.UUID       `json:"id"`
+	TenantID    uuid.UUID       `json:"tenant_id"`
+	PropertyID  uuid.UUID       `json:"property_id"`
+	ItemType    string          `json:"item_type"`
+	ItemName    string          `json:"item_name"`
+	DefaultRate decimal.Decimal `json:"default_rate"`
+	ServiceType string          `json:"service_type"`
+	IsActive    bool            `json:"is_active"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+type CreateRateCardInput struct {
+	PropertyID  uuid.UUID `json:"property_id" validate:"required"`
+	ItemType    string    `json:"item_type" validate:"required,oneof=bedsheet towel pillow_cover blanket curtain shirt trouser dress saree other"`
+	ItemName    string    `json:"item_name" validate:"required,min=1,max=100"`
+	DefaultRate float64   `json:"default_rate" validate:"required,gt=0"`
+	ServiceType string    `json:"service_type" validate:"required,oneof=wash dry_clean iron wash_iron"`
+}
+
+type UpdateRateCardInput struct {
+	ID          uuid.UUID `json:"id" validate:"required"`
+	ItemName    string    `json:"item_name" validate:"omitempty,min=1,max=100"`
+	DefaultRate float64   `json:"default_rate" validate:"omitempty,gt=0"`
+	IsActive    *bool     `json:"is_active"`
+}

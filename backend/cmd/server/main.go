@@ -121,14 +121,14 @@ func main() {
 	authSvc := authservice.New(authRepo, cfg.JWT)
 	propSvc := propservice.New(propRepo)
 	guestSvc := guestservice.New(guestRepo, store)
-	resSvc := resservice.New(resRepo, propRepo)
+	notifSvc := notifservice.New(notifRepo, notifProvider, log)
+	resSvc := resservice.New(resRepo, propRepo, notifSvc)
 	calendarSvc := calendarservice.New(calendarRepo)
-	checkinoutSvc := checkinoutservice.New(checkinoutRepo)
+	checkinoutSvc := checkinoutservice.New(checkinoutRepo, notifSvc)
 	billingSvc := billingservice.New(billingRepo, store)
 	hkSvc := hkservice.New(hkRepo)
 	laundrySvc := laundryservice.New(laundryRepo)
 	dashboardSvc := dashboardservice.New(dashboardRepo)
-	notifSvc := notifservice.New(notifRepo, notifProvider, log)
 	saasSvc := saasservice.New(saasRepo, razorpayClient)
 	opsSvc := opsservice.New(db)
 
@@ -269,6 +269,8 @@ func main() {
 			r.Route("/operations", func(r chi.Router) {
 				r.Post("/check-in", checkinoutHandler.CheckIn)
 				r.Post("/check-out", checkinoutHandler.CheckOut)
+				r.Post("/walk-in", checkinoutHandler.WalkIn)
+				r.Get("/pre-checkout", checkinoutHandler.GetPreCheckoutSummary)
 				r.Post("/no-show", opsHandler.MarkNoShow)
 				r.Post("/extend-stay", opsHandler.ExtendStay)
 				r.Post("/room-move", opsHandler.MoveRoom)
@@ -317,12 +319,20 @@ func main() {
 				r.Post("/orders/status", laundryHandler.UpdateStatus)
 				r.Post("/orders/{orderID}/post-to-folio", laundryHandler.PostToFolio)
 				r.Get("/stats/{propertyID}", laundryHandler.GetStats)
+				// Rate Card management
+				r.Post("/rate-card", laundryHandler.CreateRateCard)
+				r.Get("/rate-card/{propertyID}", laundryHandler.ListRateCards)
+				r.Put("/rate-card", laundryHandler.UpdateRateCard)
 			})
 
 			// Dashboard
 			r.Route("/dashboard", func(r chi.Router) {
 				r.Get("/{propertyID}", dashboardHandler.GetDashboard)
 				r.Get("/{propertyID}/revenue-trend", dashboardHandler.GetRevenueTrend)
+				r.Get("/{propertyID}/daily-collection", dashboardHandler.GetDailyCollection)
+				r.Get("/{propertyID}/outstanding-dues", dashboardHandler.GetOutstandingDues)
+				r.Get("/{propertyID}/end-of-day", dashboardHandler.GetEndOfDaySummary)
+				r.Post("/{propertyID}/close-day", dashboardHandler.CloseDay)
 			})
 
 			// Notifications

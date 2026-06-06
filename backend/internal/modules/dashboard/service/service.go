@@ -77,6 +77,31 @@ func (s *Service) GetRevenueTrend(ctx context.Context, tenantID, propertyID uuid
 	return s.repo.GetRevenueTrend(ctx, tenantID, propertyID, days)
 }
 
+// GetRevenueTrendByRange returns revenue data for a specific date range.
+func (s *Service) GetRevenueTrendByRange(ctx context.Context, tenantID, propertyID uuid.UUID, startDate, endDate string) ([]domain.RevenueTrend, error) {
+	return s.repo.GetRevenueTrendByRange(ctx, tenantID, propertyID, startDate, endDate)
+}
+
+// GetDailyCollection returns payment breakdown by method for a date.
+func (s *Service) GetDailyCollection(ctx context.Context, tenantID, propertyID uuid.UUID, date string) (*domain.DailyCollection, error) {
+	return s.repo.GetDailyCollection(ctx, tenantID, propertyID, date)
+}
+
+// GetOutstandingDues returns all folios with balance > 0.
+func (s *Service) GetOutstandingDues(ctx context.Context, tenantID, propertyID uuid.UUID) (*domain.OutstandingReport, error) {
+	return s.repo.GetOutstandingDues(ctx, tenantID, propertyID)
+}
+
+// GetEndOfDaySummary returns a comprehensive end-of-day report combining all key metrics.
+func (s *Service) GetEndOfDaySummary(ctx context.Context, tenantID, propertyID uuid.UUID, date string) (*domain.EndOfDaySummary, error) {
+	return s.repo.GetEndOfDaySummary(ctx, tenantID, propertyID, date)
+}
+
+// CloseDay closes the day audit, preventing further changes to that day's record.
+func (s *Service) CloseDay(ctx context.Context, tenantID, propertyID, userID uuid.UUID, date string) error {
+	return s.repo.CloseDay(ctx, tenantID, propertyID, userID, date)
+}
+
 // In-memory cache with TTL.
 type dashboardCache struct {
 	mu    sync.RWMutex

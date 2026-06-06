@@ -183,3 +183,193 @@ func (r *Repository) GetRevenueTrend(ctx context.Context, tenantID, propertyID u
 	}
 	return trends, nil
 }
+
+// GetRevenueTrendByRange returns revenue data between specific dates.
+func (r *Repository) GetRevenueTrendByRange(ctx context.Context, tenantID, propertyID uuid.UUID, startDate, endDate string) ([]domain.RevenueTrend, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT d::DATE, COALESCE(SUM(p.amount), 0)
+		 FROM generate_series($3::DATE, $4::DATE, '1 day') AS d
+		 LEFT JOIN payments p ON p.created_at::DATE = d::DATE
+		   AND p.folio_id IN (SELECT id FROM folios WHERE tenant_id = $1 AND property_id = $2)
+		   AND p.payment_type IN ('payment', 'deposit')
+		 GROUP BY d::DATE ORDER BY d::DATE`,
+		tenantID, propertyID, startDate, endDate,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("revenue trend by range: %w", err)
+	}
+	defer rows.Close()
+
+	var trends []domain.RevenueTrend
+	for rows.Next() {
+		var t domain.RevenueTrend
+		if err := rows.Scan(&t.Date, &t.Revenue); err != nil {
+			return nil, err
+		}
+		trends = append(trends, t)
+	}
+	if trends == nil {
+		trends = []domain.RevenueTrend{}
+	}
+	return trends, nil
+}
+
+// GetDailyCollection returns payment totals grouped by method for a given date.
+func (r *Repository) GetDailyCollection(ctx context.Context, tenantID, propertyID uuid.UUID, date string) (*domain.DailyCollection, error) {
+	var targetDate time.Time
+	if date == "today" || date == "" {
+		targetDate = time.Now().Truncate(24 * time.Hour)
+	} else {
+		var err error
+		targetDate, err = time.Parse("2006-01-02", date)
+		if err != nil {
+			targetDate = time.Now().Truncate(24 * time.Hour)
+		}
+	}
+	nextDay := targetDate.AddDate(0, 0, 1)
+
+	dc := &domain.DailyCollection{Date: targetDate.Format("2006-01-02")}
+
+	err := r.pool.QueryRow(ctx,
+		`SELECT
+			COALESCE(SUM(CASE WHEN payment_type != 'refund' THEN amount ELSE 0 END), 0) AS total_collected,
+			COALESCE(SUM(CASE WHEN payment_method = 'cash' AND payment_type != 'refund' THEN amount ELSE 0 END), 0) AS cash,
+			COALESCE(SUM(CASE WHEN payment_method = 'upi' AND payment_type != 'refund' THEN amount ELSE 0 END), 0) AS upi,
+			COALESCE(SUM(CASE WHEN payment_method = 'card' AND payment_type != 'refund' THEN amount ELSE 0 END), 0) AS card,
+			COALESCE(SUM(CASE WHEN payment_method = 'bank_transfer' AND payment_type != 'refund' THEN amount ELSE 0 END), 0) AS bank_transfer,
+			COALESCE(SUM(CASE WHEN payment_method = 'cheque' AND payment_type != 'refund' THEN amount ELSE 0 END), 0) AS cheque,
+			COALESCE(SUM(CASE WHEN payment_type = 'refund' THEN amount ELSE 0 END), 0) AS refunds,
+			COUNT(*) AS transactions
+		 FROM payments p
+		 JOIN folios f ON p.folio_id = f.id
+		 WHERE f.tenant_id = $1 AND f.property_id = $2
+		   AND p.created_at >= $3 AND p.created_at < $4`,
+		tenantID, propertyID, targetDate, nextDay,
+	).Scan(&dc.TotalCollected, &dc.Cash, &dc.UPI, &dc.Card, &dc.BankTransfer, &dc.Cheque, &dc.TotalRefunds, &dc.Transactions)
+	if err != nil {
+		return nil, fmt.Errorf("daily collection: %w", err)
+	}
+
+	dc.NetCollection = dc.TotalCollected.Sub(dc.TotalRefunds)
+	return dc, nil
+}
+
+// GetOutstandingDues returns all folios/reservations with balance > 0.
+func (r *Repository) GetOutstandingDues(ctx context.Context, tenantID, propertyID uuid.UUID) (*domain.OutstandingReport, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT
+			r.id, g.first_name || ' ' || g.last_name, u.unit_number,
+			r.check_in_date, r.check_out_date,
+			f.total_amount, f.paid_amount, f.balance, r.status
+		 FROM folios f
+		 JOIN reservations r ON f.reservation_id = r.id
+		 JOIN guests g ON r.guest_id = g.id
+		 JOIN units u ON r.unit_id = u.id
+		 WHERE f.tenant_id = $1 AND f.property_id = $2 AND f.balance > 0
+		 ORDER BY f.balance DESC`,
+		tenantID, propertyID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("outstanding dues: %w", err)
+	}
+	defer rows.Close()
+
+	report := &domain.OutstandingReport{}
+	for rows.Next() {
+		var d domain.OutstandingDue
+		if err := rows.Scan(&d.ReservationID, &d.GuestName, &d.UnitNumber,
+			&d.CheckInDate, &d.CheckOutDate, &d.TotalAmount, &d.PaidAmount, &d.Balance, &d.Status); err != nil {
+			return nil, err
+		}
+		report.Dues = append(report.Dues, d)
+		report.TotalOutstanding = report.TotalOutstanding.Add(d.Balance)
+		report.Count++
+	}
+	if report.Dues == nil {
+		report.Dues = []domain.OutstandingDue{}
+	}
+	return report, nil
+}
+
+// GetEndOfDaySummary returns combined end-of-day data for night audit.
+func (r *Repository) GetEndOfDaySummary(ctx context.Context, tenantID, propertyID uuid.UUID, date string) (*domain.EndOfDaySummary, error) {
+	summary := &domain.EndOfDaySummary{Date: date}
+
+	// Occupancy
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'occupied')
+		 FROM units WHERE tenant_id = $1 AND property_id = $2`,
+		tenantID, propertyID,
+	).Scan(&summary.TotalUnits, &summary.OccupiedUnits)
+	if err != nil {
+		return nil, fmt.Errorf("eod occupancy: %w", err)
+	}
+	if summary.TotalUnits > 0 {
+		summary.OccupancyRate = float64(summary.OccupiedUnits) / float64(summary.TotalUnits) * 100
+	}
+
+	// Operations counts for the date
+	err = r.pool.QueryRow(ctx,
+		`SELECT
+			COUNT(*) FILTER (WHERE actual_check_in::date = $3::date) AS check_ins,
+			COUNT(*) FILTER (WHERE actual_check_out::date = $3::date) AS check_outs,
+			COUNT(*) FILTER (WHERE booking_source = 'walk_in' AND actual_check_in::date = $3::date) AS walk_ins,
+			COUNT(*) FILTER (WHERE is_no_show = true AND no_show_at::date = $3::date) AS no_shows,
+			COUNT(*) FILTER (WHERE status = 'cancelled' AND cancelled_at::date = $3::date) AS cancellations
+		 FROM reservations WHERE tenant_id = $1 AND property_id = $2`,
+		tenantID, propertyID, date,
+	).Scan(&summary.CheckIns, &summary.CheckOuts, &summary.WalkIns, &summary.NoShows, &summary.Cancellations)
+	if err != nil {
+		return nil, fmt.Errorf("eod operations: %w", err)
+	}
+
+	// Extensions count
+	_ = r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM stay_extensions WHERE tenant_id = $1 AND created_at::date = $2::date`,
+		tenantID, date,
+	).Scan(&summary.Extensions)
+
+	// Collection
+	collection, err := r.GetDailyCollection(ctx, tenantID, propertyID, date)
+	if err != nil {
+		return nil, err
+	}
+	summary.Collection = *collection
+
+	// Outstanding
+	outstanding, err := r.GetOutstandingDues(ctx, tenantID, propertyID)
+	if err != nil {
+		return nil, err
+	}
+	summary.Outstanding = *outstanding
+
+	// Check if day is closed
+	var closed bool
+	var closedBy *uuid.UUID
+	var closedAt *time.Time
+	err = r.pool.QueryRow(ctx,
+		`SELECT status = 'closed', closed_by, closed_at FROM night_audits
+		 WHERE tenant_id = $1 AND property_id = $2 AND audit_date = $3::date`,
+		tenantID, propertyID, date,
+	).Scan(&closed, &closedBy, &closedAt)
+	if err == nil {
+		summary.IsClosed = closed
+		summary.ClosedBy = closedBy
+		summary.ClosedAt = closedAt
+	}
+
+	return summary, nil
+}
+
+// CloseDay marks the day as audited/closed.
+func (r *Repository) CloseDay(ctx context.Context, tenantID, propertyID, userID uuid.UUID, date string) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO night_audits (tenant_id, property_id, audit_date, status, closed_by, closed_at,
+			total_units, occupied_units, occupancy_rate, check_ins, check_outs)
+		 VALUES ($1, $2, $3::date, 'closed', $4, NOW(), 0, 0, 0, 0, 0)
+		 ON CONFLICT (tenant_id, property_id, audit_date) DO UPDATE SET
+			status = 'closed', closed_by = $4, closed_at = NOW()`,
+		tenantID, propertyID, date, userID,
+	)
+	return err
+}

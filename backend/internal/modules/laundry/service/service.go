@@ -105,3 +105,18 @@ func (s *Service) PostToFolio(ctx context.Context, orderID, tenantID, userID uui
 func (s *Service) GetStats(ctx context.Context, tenantID, propertyID uuid.UUID) (map[string]int, error) {
 	return s.repo.GetStats(ctx, tenantID, propertyID)
 }
+
+// CreateRateCard saves a default laundry item + price.
+func (s *Service) CreateRateCard(ctx context.Context, tenantID uuid.UUID, input domain.CreateRateCardInput) (*domain.LaundryRateCard, error) {
+	return s.repo.CreateRateCard(ctx, tenantID, input)
+}
+
+// ListRateCards returns all active rate cards for a property.
+func (s *Service) ListRateCards(ctx context.Context, tenantID, propertyID uuid.UUID) ([]domain.LaundryRateCard, error) {
+	return s.repo.ListRateCards(ctx, tenantID, propertyID)
+}
+
+// UpdateRateCard modifies an existing rate card item.
+func (s *Service) UpdateRateCard(ctx context.Context, tenantID uuid.UUID, input domain.UpdateRateCardInput) error {
+	return s.repo.UpdateRateCard(ctx, tenantID, input)
+}
