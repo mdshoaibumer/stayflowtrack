@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -18,7 +17,6 @@ type Metrics struct {
 	ActiveRequests atomic.Int64
 
 	// Histogram buckets for request duration (seconds)
-	mu               sync.Mutex
 	durationBuckets  [7]atomic.Int64 // <=5ms, <=25ms, <=100ms, <=250ms, <=1s, <=5s, >5s
 	durationSumMicro atomic.Int64    // sum in microseconds
 	durationCount    atomic.Int64
@@ -108,36 +106,36 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 		buckets[i] = cum
 	}
 
-	fmt.Fprintf(w, "# HELP http_requests_total Total number of HTTP requests.\n")
-	fmt.Fprintf(w, "# TYPE http_requests_total counter\n")
-	fmt.Fprintf(w, "http_requests_total %d\n", total)
+	_, _ = fmt.Fprintf(w, "# HELP http_requests_total Total number of HTTP requests.\n")
+	_, _ = fmt.Fprintf(w, "# TYPE http_requests_total counter\n")
+	_, _ = fmt.Fprintf(w, "http_requests_total %d\n", total)
 
-	fmt.Fprintf(w, "# HELP http_requests_active Current in-flight requests.\n")
-	fmt.Fprintf(w, "# TYPE http_requests_active gauge\n")
-	fmt.Fprintf(w, "http_requests_active %d\n", active)
+	_, _ = fmt.Fprintf(w, "# HELP http_requests_active Current in-flight requests.\n")
+	_, _ = fmt.Fprintf(w, "# TYPE http_requests_active gauge\n")
+	_, _ = fmt.Fprintf(w, "http_requests_active %d\n", active)
 
-	fmt.Fprintf(w, "# HELP http_errors_total Total 5xx responses.\n")
-	fmt.Fprintf(w, "# TYPE http_errors_total counter\n")
-	fmt.Fprintf(w, "http_errors_total %d\n", errors)
+	_, _ = fmt.Fprintf(w, "# HELP http_errors_total Total 5xx responses.\n")
+	_, _ = fmt.Fprintf(w, "# TYPE http_errors_total counter\n")
+	_, _ = fmt.Fprintf(w, "http_errors_total %d\n", errors)
 
-	fmt.Fprintf(w, "# HELP http_responses_total Responses by status class.\n")
-	fmt.Fprintf(w, "# TYPE http_responses_total counter\n")
-	fmt.Fprintf(w, "http_responses_total{code=\"2xx\"} %d\n", m.status2xx.Load())
-	fmt.Fprintf(w, "http_responses_total{code=\"3xx\"} %d\n", m.status3xx.Load())
-	fmt.Fprintf(w, "http_responses_total{code=\"4xx\"} %d\n", m.status4xx.Load())
-	fmt.Fprintf(w, "http_responses_total{code=\"5xx\"} %d\n", m.status5xx.Load())
+	_, _ = fmt.Fprintf(w, "# HELP http_responses_total Responses by status class.\n")
+	_, _ = fmt.Fprintf(w, "# TYPE http_responses_total counter\n")
+	_, _ = fmt.Fprintf(w, "http_responses_total{code=\"2xx\"} %d\n", m.status2xx.Load())
+	_, _ = fmt.Fprintf(w, "http_responses_total{code=\"3xx\"} %d\n", m.status3xx.Load())
+	_, _ = fmt.Fprintf(w, "http_responses_total{code=\"4xx\"} %d\n", m.status4xx.Load())
+	_, _ = fmt.Fprintf(w, "http_responses_total{code=\"5xx\"} %d\n", m.status5xx.Load())
 
-	fmt.Fprintf(w, "# HELP http_request_duration_seconds Request duration histogram.\n")
-	fmt.Fprintf(w, "# TYPE http_request_duration_seconds histogram\n")
-	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.005\"} %d\n", buckets[0])
-	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.025\"} %d\n", buckets[1])
-	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.1\"} %d\n", buckets[2])
-	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.25\"} %d\n", buckets[3])
-	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"1\"} %d\n", buckets[4])
-	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"5\"} %d\n", buckets[5])
-	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"+Inf\"} %d\n", buckets[6])
-	fmt.Fprintf(w, "http_request_duration_seconds_sum %.6f\n", sumSec)
-	fmt.Fprintf(w, "http_request_duration_seconds_count %d\n", count)
+	_, _ = fmt.Fprintf(w, "# HELP http_request_duration_seconds Request duration histogram.\n")
+	_, _ = fmt.Fprintf(w, "# TYPE http_request_duration_seconds histogram\n")
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.005\"} %d\n", buckets[0])
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.025\"} %d\n", buckets[1])
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.1\"} %d\n", buckets[2])
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.25\"} %d\n", buckets[3])
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"1\"} %d\n", buckets[4])
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"5\"} %d\n", buckets[5])
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"+Inf\"} %d\n", buckets[6])
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_sum %.6f\n", sumSec)
+	_, _ = fmt.Fprintf(w, "http_request_duration_seconds_count %d\n", count)
 }
 
 // HealthHandler returns detailed health status including DB connectivity.

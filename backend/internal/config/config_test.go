@@ -1,7 +1,6 @@
 package config
 
 import (
-	"os"
 	"testing"
 )
 
@@ -45,7 +44,7 @@ func TestLoad_MinimalConfig(t *testing.T) {
 func TestLoad_MissingDBPassword(t *testing.T) {
 	t.Setenv("JWT_ACCESS_SECRET", "test-secret")
 	t.Setenv("JWT_REFRESH_SECRET", "test-refresh")
-	os.Unsetenv("DB_PASSWORD")
+	t.Setenv("DB_PASSWORD", "")
 
 	_, err := Load()
 	if err == nil {
@@ -55,8 +54,8 @@ func TestLoad_MissingDBPassword(t *testing.T) {
 
 func TestLoad_MissingJWTSecret(t *testing.T) {
 	t.Setenv("DB_PASSWORD", "test-password")
-	os.Unsetenv("JWT_ACCESS_SECRET")
-	os.Unsetenv("JWT_REFRESH_SECRET")
+	t.Setenv("JWT_ACCESS_SECRET", "")
+	t.Setenv("JWT_REFRESH_SECRET", "")
 
 	_, err := Load()
 	if err == nil {
