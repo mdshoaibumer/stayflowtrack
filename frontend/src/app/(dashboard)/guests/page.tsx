@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
+import { GuestCard, GuestDetailPanel } from "@/components/dashboard/GuestCard";
 
 interface Guest {
   id: string;
@@ -55,24 +57,33 @@ export default function GuestsPage() {
   }, [fetchGuests]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Guests</h1>
-        <button
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+      >
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">Guests</h1>
+          <p className="text-sm text-gray-400">{guests.length > 0 ? `${guests.length} guests found` : "Manage your guest records"}</p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-navy-900 text-white text-sm font-medium rounded-xl hover:bg-navy-800 shadow-sm transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Add Guest
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Search */}
       <div className="relative">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
@@ -80,7 +91,7 @@ export default function GuestsPage() {
           placeholder="Search by name, email, or phone..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all duration-200"
         />
       </div>
 
@@ -101,95 +112,71 @@ export default function GuestsPage() {
 
       {/* Guest List */}
       {!loading && guests.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <p className="font-medium">No guests found</p>
-          <p className="text-sm mt-1">
-            {search ? "Try a different search" : "Add your first guest to get started"}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center py-16"
+        >
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-50 flex items-center justify-center">
+            <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <p className="text-base font-semibold text-gray-900">No guests found</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {search ? "Try a different search term" : "Add your first guest to get started"}
           </p>
-        </div>
+        </motion.div>
       )}
 
       {!loading && guests.length > 0 && (
-        <>
-          {/* Mobile cards */}
-          <div className="space-y-3 lg:hidden">
-            {guests.map((guest) => (
-              <div
-                key={guest.id}
-                onClick={() => setSelectedGuest(guest)}
-                className="border rounded-lg p-4 bg-white shadow-sm active:bg-gray-50 cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900">{guest.full_name}</p>
-                    <p className="text-sm text-gray-500">{guest.phone || guest.email}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">{guest.total_stays || 0} stays</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop table */}
-          <div className="hidden lg:block border rounded-lg overflow-hidden bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Email</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">ID Type</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Stays</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Last Stay</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {guests.map((guest) => (
-                  <tr
+        <div className="flex gap-6">
+          {/* Guest list */}
+          <div className="flex-1 min-w-0">
+            <div className="space-y-2">
+              <AnimatePresence mode="popLayout">
+                {guests.map((guest, idx) => (
+                  <GuestCard
                     key={guest.id}
-                    onClick={() => setSelectedGuest(guest)}
-                    className="hover:bg-gray-50 cursor-pointer"
-                  >
-                    <td className="px-4 py-3 font-medium">{guest.full_name}</td>
-                    <td className="px-4 py-3 text-gray-600">{guest.phone || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{guest.email || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600 capitalize">{guest.id_type?.replace("_", " ") || "—"}</td>
-                    <td className="px-4 py-3">{guest.total_stays || 0}</td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {guest.last_stay_date ? new Date(guest.last_stay_date).toLocaleDateString() : "—"}
-                    </td>
-                  </tr>
+                    guest={guest}
+                    index={idx}
+                    selected={selectedGuest?.id === guest.id}
+                    onSelect={setSelectedGuest}
+                  />
                 ))}
-              </tbody>
-            </table>
+              </AnimatePresence>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-6">
+                <button
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-500 font-medium">Page {page} of {totalPages}</span>
+                <button
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
-              <button
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
+          {/* Detail panel (desktop) */}
+          <div className="hidden lg:block w-80 flex-shrink-0">
+            <GuestDetailPanel
+              guest={selectedGuest}
+              onClose={() => setSelectedGuest(null)}
+            />
+          </div>
+        </div>
       )}
 
       {/* Create Guest Modal */}

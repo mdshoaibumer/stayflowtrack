@@ -4,6 +4,13 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { RoomBoard } from "@/components/dashboard/RoomBoard";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { DashboardAlerts } from "@/components/dashboard/DashboardAlerts";
+import { OperationsSummary } from "@/components/dashboard/OperationsSummary";
+import { MorningBrief } from "@/components/dashboard/MorningBrief";
 
 interface DashboardMetrics {
   date: string;
@@ -34,6 +41,7 @@ export default function DashboardPage() {
   const [units, setUnits] = useState<UnitStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   const propertyId = user?.property_id || "";
 
@@ -57,291 +65,7 @@ export default function DashboardPage() {
     }
   }, [api, propertyId]);
 
-  useEffect(() => {
-    fetchDashboard();
-    const interval = setInterval(fetchDashboard, 30000);
-    return () => clearInterval(interval);
-  }, [fetchDashboard]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-700">{error}</p>
-        <button onClick={fetchDashboard} className="mt-2 text-sm text-red-600 underline">
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">
-            {metrics?.date || new Date().toLocaleDateString()} • Auto-refreshes every 30s
-          </p>
-        </div>
-      </div>
-
-      {/* Morning Brief */}
-      {metrics && (
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg">
-          <p className="text-sm text-gray-700">
-            <span className="font-semibold text-blue-900">Today:</span>{" "}
-            {metrics.operations.expected_arrivals > 0 ? `${metrics.operations.expected_arrivals} arrival${metrics.operations.expected_arrivals > 1 ? "s" : ""}` : "No arrivals"}
-            {", "}
-            {metrics.operations.expected_departures > 0 ? `${metrics.operations.expected_departures} departure${metrics.operations.expected_departures > 1 ? "s" : ""}` : "no departures"}
-            {". "}
-            {metrics.occupancy.occupied_units}/{metrics.occupancy.total_units} units occupied ({metrics.occupancy.occupancy_rate.toFixed(0)}%).
-            {metrics.pending_payments.pending_amount > 0 && (
-              <Link href="/reports?type=outstanding" className="text-red-600 font-medium hover:underline"> ₹{metrics.pending_payments.pending_amount.toLocaleString()} outstanding →</Link>
-            )}
-          </p>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <QuickAction href="/reservations?action=new" label="New Reservation" color="bg-blue-600" icon={<PlusIcon />} />
-        <QuickAction href="/operations?action=walkin" label="Walk-In" color="bg-green-600" icon={<WalkIcon />} />
-        <QuickAction href="/operations?tab=checkin" label="Check In" color="bg-purple-600" icon={<ArrowInIcon />} />
-        <QuickAction href="/operations?tab=checkout" label="Check Out" color="bg-orange-600" icon={<ArrowOutIcon />} />
-        <QuickAction href="/operations?tab=inhouse" label="Extend Stay" color="bg-indigo-600" icon={<ExtendIcon />} />
-        <QuickAction href="/billing?action=charge" label="Quick Charge" color="bg-red-600" icon={<ChargeIcon />} />
-        <QuickAction href="/laundry?action=new" label="Add Laundry" color="bg-cyan-600" icon={<LaundryIcon />} />
-        <QuickAction href="/reports?type=end_of_day" label="Close Day" color="bg-gray-800" icon={<CloseDayIcon />} />
-      </div>
-
-      {/* Alerts: Overdue Checkouts & Tomorrow's Arrivals */}
-      <DashboardAlerts propertyId={propertyId} metrics={metrics} />
-
-      {/* Room Status Board */}
-      {units.length > 0 && (
-        <div className="border rounded-lg p-4 bg-white shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-700 text-sm">Room Status Board</h3>
-            <div className="flex gap-3 text-xs">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500"></span> Available</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500"></span> Occupied</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-500"></span> Reserved</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-500"></span> Cleaning</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500"></span> Maintenance</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-            {units.map((unit) => (
-              <div
-                key={unit.id}
-                className={`p-3 rounded-lg border-2 text-center cursor-pointer transition-all hover:shadow-md ${getUnitStatusStyle(unit.status)}`}
-                title={unit.guest_name ? `Guest: ${unit.guest_name}` : unit.status}
-              >
-                <div className="font-bold text-sm">{unit.unit_number}</div>
-                <div className="text-[10px] uppercase tracking-wide mt-0.5 opacity-75">{unit.status.replace('_', ' ')}</div>
-                {unit.guest_name && <div className="text-[10px] mt-0.5 truncate font-medium">{unit.guest_name}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      {metrics && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/reservations" className="block">
-            <KPICard
-              title="Occupancy"
-              value={`${metrics.occupancy.occupancy_rate.toFixed(0)}%`}
-              subtitle={`${metrics.occupancy.occupied_units}/${metrics.occupancy.total_units} units`}
-              color="border-l-green-500"
-            />
-          </Link>
-          <Link href="/billing" className="block">
-            <KPICard
-              title="Revenue Today"
-              value={formatCurrency(metrics.revenue.today)}
-              subtitle={`Month: ${formatCurrency(metrics.revenue.this_month)}`}
-              color="border-l-blue-500"
-            />
-          </Link>
-          <Link href="/operations?tab=checkin" className="block">
-            <KPICard
-              title="Arrivals Today"
-              value={String(metrics.operations.expected_arrivals)}
-              subtitle={`Checked in: ${metrics.operations.check_ins_today}`}
-              color="border-l-purple-500"
-            />
-          </Link>
-          <Link href="/reports?type=outstanding" className="block">
-            <KPICard
-              title="Pending Payments"
-              value={formatCurrency(metrics.pending_payments.pending_amount)}
-              subtitle={`${metrics.pending_payments.pending_count} folios • ${metrics.pending_payments.overdue_count} overdue`}
-              color="border-l-orange-500"
-            />
-          </Link>
-        </div>
-      )}
-
-      {/* Quick Reports Row */}
-      {metrics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Link href="/reports" className="block border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-gray-700">Daily Collection</h4>
-                <p className="text-xs text-gray-500 mt-0.5">Cash / UPI / Card breakdown for today</p>
-              </div>
-              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </div>
-          </Link>
-          <Link href="/reports" className="block border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-gray-700">Outstanding Dues</h4>
-                <p className="text-xs text-gray-500 mt-0.5">Guests with pending balance</p>
-              </div>
-              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </div>
-          </Link>
-        </div>
-      )}
-
-      {/* Operations Summary */}
-      {metrics && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Today's Operations */}
-          <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-3 text-sm">Today&apos;s Operations</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Check-ins</span>
-                <span className="font-medium text-green-600">{metrics.operations.check_ins_today}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Check-outs</span>
-                <span className="font-medium text-orange-600">{metrics.operations.check_outs_today}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Expected Arrivals</span>
-                <span className="font-medium">{metrics.operations.expected_arrivals}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Expected Departures</span>
-                <span className="font-medium">{metrics.operations.expected_departures}</span>
-              </div>
-            </div>
-            <Link href="/operations" className="mt-3 block text-xs text-blue-600 hover:underline">
-              View all operations →
-            </Link>
-          </div>
-
-          {/* Housekeeping */}
-          <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-3 text-sm">Housekeeping</h3>
-            <div className="space-y-2 text-sm">
-              <StatusRow label="Dirty" count={metrics.housekeeping.counts?.dirty || 0} color="bg-red-500" />
-              <StatusRow label="Cleaning" count={metrics.housekeeping.counts?.cleaning || 0} color="bg-yellow-500" />
-              <StatusRow label="Inspection" count={metrics.housekeeping.counts?.inspection || 0} color="bg-blue-500" />
-              <StatusRow label="Ready" count={metrics.housekeeping.counts?.ready || 0} color="bg-green-500" />
-            </div>
-            <Link href="/housekeeping" className="mt-3 block text-xs text-blue-600 hover:underline">
-              View board →
-            </Link>
-          </div>
-
-          {/* Laundry */}
-          <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-3 text-sm">Laundry</h3>
-            <div className="space-y-2 text-sm">
-              <StatusRow label="Received" count={metrics.laundry.counts?.received || 0} color="bg-gray-500" />
-              <StatusRow label="Washing" count={metrics.laundry.counts?.washing || 0} color="bg-blue-500" />
-              <StatusRow label="Ready" count={metrics.laundry.counts?.ready || 0} color="bg-green-500" />
-            </div>
-            <Link href="/laundry" className="mt-3 block text-xs text-blue-600 hover:underline">
-              View tracker →
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function KPICard({ title, value, subtitle, color }: { title: string; value: string; subtitle: string; color: string }) {
-  return (
-    <div className={`border rounded-lg p-4 bg-white shadow-sm border-l-4 ${color} hover:shadow-md transition-shadow`}>
-      <span className="text-xs text-gray-500 uppercase font-medium">{title}</span>
-      <div className="text-xl lg:text-2xl font-bold mt-1">{value}</div>
-      <div className="text-xs text-gray-500 mt-1">{subtitle}</div>
-    </div>
-  );
-}
-
-function StatusRow({ label, count, color }: { label: string; count: number; color: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${color}`}></div>
-        <span className="text-gray-600">{label}</span>
-      </div>
-      <span className="font-medium">{count}</span>
-    </div>
-  );
-}
-
-function QuickAction({ href, label, color, icon }: { href: string; label: string; color: string; icon: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className={`flex flex-col items-center gap-1.5 p-3 rounded-lg text-white ${color} hover:opacity-90 transition-opacity shadow-sm`}
-    >
-      {icon}
-      <span className="text-xs font-medium text-center">{label}</span>
-    </Link>
-  );
-}
-
-function PlusIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
-}
-function WalkIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
-}
-function ArrowInIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>;
-}
-function ArrowOutIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
-}
-function LaundryIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>;
-}
-function ChargeIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-}
-function ExtendIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
-}
-function CloseDayIcon() {
-  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-}
-
-function DashboardAlerts({ propertyId, metrics }: { propertyId: string; metrics: DashboardMetrics | null }) {
-  const api = useApi();
-  const [overdueCheckouts, setOverdueCheckouts] = useState<any[]>([]);
-  const [tomorrowArrivals, setTomorrowArrivals] = useState<any[]>([]);
-
+  // Fetch alerts
   useEffect(() => {
     if (!propertyId) return;
     const fetchAlerts = async () => {
@@ -351,75 +75,230 @@ function DashboardAlerts({ propertyId, metrics }: { propertyId: string; metrics:
         const today = new Date().toISOString().split("T")[0];
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
-        // Overdue: checkout date is today or earlier but still checked_in
-        const overdue = reservations.filter((r: any) => r.status === "checked_in" && r.check_out_date <= today);
-        setOverdueCheckouts(overdue);
+        const overdueCheckouts = reservations.filter((r: any) => r.status === "checked_in" && r.check_out_date <= today);
+        const tomorrowArrivals = reservations.filter((r: any) => r.check_in_date === tomorrow && (r.status === "confirmed" || r.status === "pending"));
 
-        // Tomorrow arrivals
-        const arriving = reservations.filter((r: any) => r.check_in_date === tomorrow && (r.status === "confirmed" || r.status === "pending"));
-        setTomorrowArrivals(arriving);
+        const alertItems: any[] = [];
+        if (overdueCheckouts.length > 0) {
+          alertItems.push({
+            id: "overdue",
+            type: "overdue",
+            title: `Overdue Checkouts (${overdueCheckouts.length})`,
+            message: overdueCheckouts.map((r: any) => `${r.unit_number} — ${r.guest_name}`).join(", "),
+            actionLabel: "Check Out",
+            actionHref: "/operations?tab=checkout",
+          });
+        }
+        if (tomorrowArrivals.length > 0) {
+          alertItems.push({
+            id: "arriving",
+            type: "arriving",
+            title: `Tomorrow's Arrivals (${tomorrowArrivals.length})`,
+            message: tomorrowArrivals.map((r: any) => `${r.unit_number} — ${r.guest_name}`).join(", "),
+            actionLabel: "Prepare",
+            actionHref: "/housekeeping",
+          });
+        }
+        setAlerts(alertItems);
       } catch { /* silent */ }
     };
     fetchAlerts();
   }, [api, propertyId]);
 
-  if (overdueCheckouts.length === 0 && tomorrowArrivals.length === 0) return null;
+  useEffect(() => {
+    fetchDashboard();
+    const interval = setInterval(fetchDashboard, 30000);
+    return () => clearInterval(interval);
+  }, [fetchDashboard]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full border-[3px] border-gray-200 border-t-teal-600 animate-spin" />
+          </div>
+          <p className="text-sm text-gray-400 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="p-6 bg-red-50 border border-red-200 rounded-xl text-center"
+      >
+        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center">
+          <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <p className="text-red-800 font-medium mb-1">Failed to load dashboard</p>
+        <p className="text-red-600 text-sm mb-3">{error}</p>
+        <button
+          onClick={fetchDashboard}
+          className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Try Again
+        </button>
+      </motion.div>
+    );
+  }
 
   return (
-    <div className="space-y-3">
-      {overdueCheckouts.length > 0 && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-            <h3 className="text-sm font-bold text-red-800">Overdue Checkouts ({overdueCheckouts.length})</h3>
-          </div>
-          <div className="space-y-1">
-            {overdueCheckouts.map((r: any) => (
-              <div key={r.reservation_id || r.id} className="flex items-center justify-between text-sm">
-                <span className="text-red-700">
-                  <strong>{r.unit_number}</strong> — {r.guest_name} (was due: {r.check_out_date})
-                </span>
-                <Link href="/operations?tab=checkout" className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">
-                  Check Out
-                </Link>
-              </div>
-            ))}
-          </div>
+    <div className="space-y-5 max-w-[1600px] mx-auto">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+      >
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+          <p className="text-sm text-gray-400">
+            {metrics?.date || new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-subtle" />
+            Live
+          </span>
+          <span className="text-xs text-gray-400">Auto-refreshes every 30s</span>
+        </div>
+      </motion.div>
+
+      {/* Morning Brief */}
+      {metrics && <MorningBrief metrics={metrics} />}
+
+      {/* Alerts */}
+      <DashboardAlerts alerts={alerts} />
+
+      {/* Quick Actions */}
+      <QuickActions />
+
+      {/* KPI Stats */}
+      {metrics && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Occupancy"
+            value={metrics.occupancy.occupancy_rate}
+            suffix="%"
+            subtitle={`${metrics.occupancy.occupied_units}/${metrics.occupancy.total_units} units`}
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            }
+            color="green"
+            href="/reservations"
+            index={0}
+          />
+          <StatCard
+            title="Revenue Today"
+            value={metrics.revenue.today}
+            prefix="₹"
+            subtitle={`Month: ${formatCurrency(metrics.revenue.this_month)}`}
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+            color="blue"
+            href="/billing"
+            index={1}
+          />
+          <StatCard
+            title="Arrivals Today"
+            value={metrics.operations.expected_arrivals}
+            subtitle={`Checked in: ${metrics.operations.check_ins_today}`}
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+            }
+            color="purple"
+            href="/operations?tab=checkin"
+            index={2}
+          />
+          <StatCard
+            title="Pending Payments"
+            value={metrics.pending_payments.pending_amount}
+            prefix="₹"
+            subtitle={`${metrics.pending_payments.pending_count} folios • ${metrics.pending_payments.overdue_count} overdue`}
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+            color={metrics.pending_payments.overdue_count > 0 ? "red" : "orange"}
+            href="/reports?type=outstanding"
+            index={3}
+          />
         </div>
       )}
-      {tomorrowArrivals.length > 0 && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <h3 className="text-sm font-bold text-blue-800">Tomorrow&apos;s Arrivals ({tomorrowArrivals.length})</h3>
-          </div>
-          <div className="space-y-1">
-            {tomorrowArrivals.map((r: any) => (
-              <div key={r.reservation_id || r.id} className="text-sm text-blue-700">
-                <strong>{r.unit_number}</strong> — {r.guest_name} (until {r.check_out_date})
+
+      {/* Room Status Board */}
+      {units.length > 0 && <RoomBoard units={units} />}
+
+      {/* Quick Reports */}
+      {metrics && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.35 }}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        >
+          <Link href="/reports" className="group block rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900">Daily Collection</h4>
+                  <p className="text-xs text-gray-500">Cash / UPI / Card breakdown</p>
+                </div>
               </div>
-            ))}
-          </div>
-          <p className="text-xs text-blue-600 mt-2">Ensure rooms are ready for tomorrow&apos;s guests.</p>
-        </div>
+              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+          <Link href="/reports?type=outstanding" className="group block rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900">Outstanding Dues</h4>
+                  <p className="text-xs text-gray-500">Guests with pending balance</p>
+                </div>
+              </div>
+              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+        </motion.div>
+      )}
+
+      {/* Operations Summary */}
+      {metrics && (
+        <OperationsSummary
+          operations={metrics.operations}
+          housekeeping={metrics.housekeeping}
+          laundry={metrics.laundry}
+        />
       )}
     </div>
   );
-}
-
-function getUnitStatusStyle(status: string): string {
-  switch (status) {
-    case "available":
-      return "border-green-300 bg-green-50 text-green-800";
-    case "occupied":
-      return "border-blue-300 bg-blue-50 text-blue-800";
-    case "reserved":
-      return "border-yellow-300 bg-yellow-50 text-yellow-800";
-    case "cleaning":
-      return "border-orange-300 bg-orange-50 text-orange-800";
-    case "maintenance":
-      return "border-red-300 bg-red-50 text-red-800";
-    default:
-      return "border-gray-300 bg-gray-50 text-gray-800";
-  }
 }

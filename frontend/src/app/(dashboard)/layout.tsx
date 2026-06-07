@@ -11,11 +11,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-screen overflow-hidden bg-[hsl(210,40%,98%)]">
         {/* Mobile overlay */}
         {mobileMenuOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-200"
             onClick={() => setMobileMenuOpen(false)}
           />
         )}
@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           <TopNav onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth">
             {children}
           </main>
         </div>
