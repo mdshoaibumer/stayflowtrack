@@ -88,7 +88,23 @@ func (s *Service) ListOrders(ctx context.Context, tenantID uuid.UUID, propertyID
 }
 
 func (s *Service) UpdateStatus(ctx context.Context, tenantID, userID uuid.UUID, input domain.UpdateStatusInput) error {
-	return s.repo.UpdateStatus(ctx, input.OrderID, tenantID, userID, input.Status)
+	err := s.repo.UpdateStatus(ctx, input.OrderID, tenantID, userID, input.Status)
+	if err != nil {
+		return err
+	}
+
+	// Auto-post to folio when delivered (for guest orders only)
+	if input.Status == string(domain.LaundryDelivered) {
+		order, err := s.repo.GetByID(ctx, input.OrderID, tenantID)
+		if err != nil {
+			return nil // Non-blocking: status already updated
+		}
+		if order.OrderType == "guest" && !order.PostedToFolio && order.FolioID != nil {
+			_ = s.repo.PostToFolio(ctx, input.OrderID, tenantID, userID)
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) PostToFolio(ctx context.Context, orderID, tenantID, userID uuid.UUID) error {

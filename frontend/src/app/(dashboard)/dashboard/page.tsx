@@ -94,15 +94,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Morning Brief */}
+      {metrics && (
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg">
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold text-blue-900">Today:</span>{" "}
+            {metrics.operations.expected_arrivals > 0 ? `${metrics.operations.expected_arrivals} arrival${metrics.operations.expected_arrivals > 1 ? "s" : ""}` : "No arrivals"}
+            {", "}
+            {metrics.operations.expected_departures > 0 ? `${metrics.operations.expected_departures} departure${metrics.operations.expected_departures > 1 ? "s" : ""}` : "no departures"}
+            {". "}
+            {metrics.occupancy.occupied_units}/{metrics.occupancy.total_units} units occupied ({metrics.occupancy.occupancy_rate.toFixed(0)}%).
+            {metrics.pending_payments.pending_amount > 0 && (
+              <Link href="/reports?type=outstanding" className="text-red-600 font-medium hover:underline"> ₹{metrics.pending_payments.pending_amount.toLocaleString()} outstanding →</Link>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <QuickAction href="/reservations?action=new" label="New Reservation" color="bg-blue-600" icon={<PlusIcon />} />
         <QuickAction href="/operations?action=walkin" label="Walk-In" color="bg-green-600" icon={<WalkIcon />} />
         <QuickAction href="/operations?tab=checkin" label="Check In" color="bg-purple-600" icon={<ArrowInIcon />} />
         <QuickAction href="/operations?tab=checkout" label="Check Out" color="bg-orange-600" icon={<ArrowOutIcon />} />
+        <QuickAction href="/operations?tab=inhouse" label="Extend Stay" color="bg-indigo-600" icon={<ExtendIcon />} />
         <QuickAction href="/billing?action=charge" label="Quick Charge" color="bg-red-600" icon={<ChargeIcon />} />
         <QuickAction href="/laundry?action=new" label="Add Laundry" color="bg-cyan-600" icon={<LaundryIcon />} />
+        <QuickAction href="/reports?type=end_of_day" label="Close Day" color="bg-gray-800" icon={<CloseDayIcon />} />
       </div>
+
+      {/* Alerts: Overdue Checkouts & Tomorrow's Arrivals */}
+      <DashboardAlerts propertyId={propertyId} metrics={metrics} />
 
       {/* Room Status Board */}
       {units.length > 0 && (
@@ -307,6 +329,82 @@ function LaundryIcon() {
 }
 function ChargeIcon() {
   return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+function ExtendIcon() {
+  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+}
+function CloseDayIcon() {
+  return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+
+function DashboardAlerts({ propertyId, metrics }: { propertyId: string; metrics: DashboardMetrics | null }) {
+  const api = useApi();
+  const [overdueCheckouts, setOverdueCheckouts] = useState<any[]>([]);
+  const [tomorrowArrivals, setTomorrowArrivals] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    const fetchAlerts = async () => {
+      try {
+        const data = await api.get<any>("/api/v1/reservations", { property_id: propertyId, per_page: "100" });
+        const reservations = Array.isArray(data) ? data : data?.data || [];
+        const today = new Date().toISOString().split("T")[0];
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+
+        // Overdue: checkout date is today or earlier but still checked_in
+        const overdue = reservations.filter((r: any) => r.status === "checked_in" && r.check_out_date <= today);
+        setOverdueCheckouts(overdue);
+
+        // Tomorrow arrivals
+        const arriving = reservations.filter((r: any) => r.check_in_date === tomorrow && (r.status === "confirmed" || r.status === "pending"));
+        setTomorrowArrivals(arriving);
+      } catch { /* silent */ }
+    };
+    fetchAlerts();
+  }, [api, propertyId]);
+
+  if (overdueCheckouts.length === 0 && tomorrowArrivals.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {overdueCheckouts.length > 0 && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+            <h3 className="text-sm font-bold text-red-800">Overdue Checkouts ({overdueCheckouts.length})</h3>
+          </div>
+          <div className="space-y-1">
+            {overdueCheckouts.map((r: any) => (
+              <div key={r.reservation_id || r.id} className="flex items-center justify-between text-sm">
+                <span className="text-red-700">
+                  <strong>{r.unit_number}</strong> — {r.guest_name} (was due: {r.check_out_date})
+                </span>
+                <Link href="/operations?tab=checkout" className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">
+                  Check Out
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {tomorrowArrivals.length > 0 && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <h3 className="text-sm font-bold text-blue-800">Tomorrow&apos;s Arrivals ({tomorrowArrivals.length})</h3>
+          </div>
+          <div className="space-y-1">
+            {tomorrowArrivals.map((r: any) => (
+              <div key={r.reservation_id || r.id} className="text-sm text-blue-700">
+                <strong>{r.unit_number}</strong> — {r.guest_name} (until {r.check_out_date})
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-blue-600 mt-2">Ensure rooms are ready for tomorrow&apos;s guests.</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function getUnitStatusStyle(status: string): string {

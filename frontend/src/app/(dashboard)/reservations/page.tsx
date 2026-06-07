@@ -480,7 +480,17 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
   const handleCancel = async () => {
     setLoading(true);
     try {
-      await api.post(`/api/v1/reservations/${reservation.id}/cancel`);
+      await api.post(`/api/v1/reservations/${reservation.id}/cancel`, { reason: "Cancelled by staff" });
+      onUpdated();
+      onClose();
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  };
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    try {
+      await api.post(`/api/v1/reservations/${reservation.id}/confirm`);
       onUpdated();
       onClose();
     } catch { /* silent */ }
@@ -511,6 +521,11 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
 
           {/* Actions */}
           <div className="border-t pt-4 space-y-2">
+            {reservation.status === "pending" && (
+              <button onClick={handleConfirm} disabled={loading} className="w-full py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                {loading ? "Confirming..." : "✓ Confirm Reservation"}
+              </button>
+            )}
             {(reservation.status === "confirmed" || reservation.status === "pending") && (
               <>
                 <a href={`/operations?tab=checkin&reservation=${reservation.id}`} className="block w-full text-center py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">

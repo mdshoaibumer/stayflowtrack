@@ -1,26 +1,47 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-// Metrics collects basic operational metrics in-memory.
-// For production at scale, replace with Prometheus client.
+// Metrics collects operational metrics exposed via /metrics in Prometheus text format.
 type Metrics struct {
-	TotalRequests    atomic.Int64
-	TotalErrors      atomic.Int64
-	ActiveRequests   atomic.Int64
-	RequestDurations []time.Duration // circular buffer
+	TotalRequests  atomic.Int64
+	TotalErrors    atomic.Int64
+	ActiveRequests atomic.Int64
+
+	// Histogram buckets for request duration (seconds)
+	mu               sync.Mutex
+	durationBuckets  [7]atomic.Int64 // <=5ms, <=25ms, <=100ms, <=250ms, <=1s, <=5s, >5s
+	durationSumMicro atomic.Int64    // sum in microseconds
+	durationCount    atomic.Int64
+
+	// Status code counters
+	status2xx atomic.Int64
+	status3xx atomic.Int64
+	status4xx atomic.Int64
+	status5xx atomic.Int64
 }
 
 var GlobalMetrics = &Metrics{}
 
-// MetricsMiddleware tracks request counts and durations.
+var bucketBounds = [6]time.Duration{
+	5 * time.Millisecond,
+	25 * time.Millisecond,
+	100 * time.Millisecond,
+	250 * time.Millisecond,
+	1 * time.Second,
+	5 * time.Second,
+}
+
+// MetricsMiddleware tracks request counts, durations, and status codes.
 func MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		GlobalMetrics.TotalRequests.Add(1)
@@ -31,12 +52,92 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 		ww := chimiddleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		next.ServeHTTP(ww, r)
 
-		if ww.Status() >= 500 {
-			GlobalMetrics.TotalErrors.Add(1)
+		duration := time.Since(start)
+		GlobalMetrics.durationSumMicro.Add(duration.Microseconds())
+		GlobalMetrics.durationCount.Add(1)
+
+		// Bucket assignment
+		switch {
+		case duration <= bucketBounds[0]:
+			GlobalMetrics.durationBuckets[0].Add(1)
+		case duration <= bucketBounds[1]:
+			GlobalMetrics.durationBuckets[1].Add(1)
+		case duration <= bucketBounds[2]:
+			GlobalMetrics.durationBuckets[2].Add(1)
+		case duration <= bucketBounds[3]:
+			GlobalMetrics.durationBuckets[3].Add(1)
+		case duration <= bucketBounds[4]:
+			GlobalMetrics.durationBuckets[4].Add(1)
+		case duration <= bucketBounds[5]:
+			GlobalMetrics.durationBuckets[5].Add(1)
+		default:
+			GlobalMetrics.durationBuckets[6].Add(1)
 		}
 
-		_ = time.Since(start)
+		status := ww.Status()
+		switch {
+		case status >= 500:
+			GlobalMetrics.TotalErrors.Add(1)
+			GlobalMetrics.status5xx.Add(1)
+		case status >= 400:
+			GlobalMetrics.status4xx.Add(1)
+		case status >= 300:
+			GlobalMetrics.status3xx.Add(1)
+		default:
+			GlobalMetrics.status2xx.Add(1)
+		}
 	})
+}
+
+// MetricsHandler exposes metrics in Prometheus text exposition format.
+func MetricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+
+	m := GlobalMetrics
+	total := m.TotalRequests.Load()
+	errors := m.TotalErrors.Load()
+	active := m.ActiveRequests.Load()
+	count := m.durationCount.Load()
+	sumSec := float64(m.durationSumMicro.Load()) / 1e6
+
+	// Cumulative bucket counts for histogram
+	var cum int64
+	var buckets [7]int64
+	for i := range m.durationBuckets {
+		cum += m.durationBuckets[i].Load()
+		buckets[i] = cum
+	}
+
+	fmt.Fprintf(w, "# HELP http_requests_total Total number of HTTP requests.\n")
+	fmt.Fprintf(w, "# TYPE http_requests_total counter\n")
+	fmt.Fprintf(w, "http_requests_total %d\n", total)
+
+	fmt.Fprintf(w, "# HELP http_requests_active Current in-flight requests.\n")
+	fmt.Fprintf(w, "# TYPE http_requests_active gauge\n")
+	fmt.Fprintf(w, "http_requests_active %d\n", active)
+
+	fmt.Fprintf(w, "# HELP http_errors_total Total 5xx responses.\n")
+	fmt.Fprintf(w, "# TYPE http_errors_total counter\n")
+	fmt.Fprintf(w, "http_errors_total %d\n", errors)
+
+	fmt.Fprintf(w, "# HELP http_responses_total Responses by status class.\n")
+	fmt.Fprintf(w, "# TYPE http_responses_total counter\n")
+	fmt.Fprintf(w, "http_responses_total{code=\"2xx\"} %d\n", m.status2xx.Load())
+	fmt.Fprintf(w, "http_responses_total{code=\"3xx\"} %d\n", m.status3xx.Load())
+	fmt.Fprintf(w, "http_responses_total{code=\"4xx\"} %d\n", m.status4xx.Load())
+	fmt.Fprintf(w, "http_responses_total{code=\"5xx\"} %d\n", m.status5xx.Load())
+
+	fmt.Fprintf(w, "# HELP http_request_duration_seconds Request duration histogram.\n")
+	fmt.Fprintf(w, "# TYPE http_request_duration_seconds histogram\n")
+	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.005\"} %d\n", buckets[0])
+	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.025\"} %d\n", buckets[1])
+	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.1\"} %d\n", buckets[2])
+	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"0.25\"} %d\n", buckets[3])
+	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"1\"} %d\n", buckets[4])
+	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"5\"} %d\n", buckets[5])
+	fmt.Fprintf(w, "http_request_duration_seconds_bucket{le=\"+Inf\"} %d\n", buckets[6])
+	fmt.Fprintf(w, "http_request_duration_seconds_sum %.6f\n", sumSec)
+	fmt.Fprintf(w, "http_request_duration_seconds_count %d\n", count)
 }
 
 // HealthHandler returns detailed health status including DB connectivity.

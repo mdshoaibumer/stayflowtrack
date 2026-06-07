@@ -29,7 +29,7 @@ type CreateReservationInput struct {
 	PropertyID        uuid.UUID       `json:"property_id" validate:"required"`
 	UnitID            uuid.UUID       `json:"unit_id" validate:"required"`
 	GuestID           uuid.UUID       `json:"guest_id" validate:"required"`
-	BookingSource     string          `json:"booking_source" validate:"required,oneof=walk_in phone whatsapp booking_com airbnb other"`
+	BookingSource     string          `json:"booking_source" validate:"required,oneof=walk_in phone whatsapp email website booking_com airbnb ota_makemytrip ota_goibibo ota_other referral corporate repeat other"`
 	CheckInDate       string          `json:"check_in_date" validate:"required"`
 	CheckOutDate      string          `json:"check_out_date" validate:"required"`
 	NumGuests         int             `json:"num_guests" validate:"required,min=1,max=20"`
@@ -240,6 +240,20 @@ func (s *Service) CancelReservation(ctx context.Context, id, tenantID uuid.UUID,
 	_ = s.repo.UpdateUnitStatus(ctx, existing.UnitID, "available")
 
 	return nil
+}
+
+// ConfirmReservation transitions a pending reservation to confirmed.
+func (s *Service) ConfirmReservation(ctx context.Context, id, tenantID uuid.UUID) error {
+	existing, err := s.repo.GetReservationByID(ctx, id, tenantID)
+	if err != nil {
+		return err
+	}
+
+	if !existing.Status.CanTransitionTo(domain.StatusConfirmed) {
+		return apperrors.BadRequest(fmt.Sprintf("cannot confirm reservation in '%s' status", existing.Status))
+	}
+
+	return s.repo.ConfirmReservation(ctx, id, tenantID)
 }
 
 func (s *Service) CheckIn(ctx context.Context, id, tenantID uuid.UUID) error {

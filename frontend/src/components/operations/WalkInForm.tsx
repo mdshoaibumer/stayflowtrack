@@ -193,6 +193,12 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Deposit Amount (₹) <span className="text-gray-400">(0 for corporate)</span></label>
                 <input type="number" required min={0} value={form.deposit_amount} onChange={(e) => setForm({ ...form, deposit_amount: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                {form.rate_per_night > 0 && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Suggested: ₹{form.rate_per_night.toLocaleString()} (1 night).
+                    <button type="button" onClick={() => setForm({ ...form, deposit_amount: form.rate_per_night })} className="ml-1 underline hover:no-underline">Use this</button>
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Payment Method *</label>

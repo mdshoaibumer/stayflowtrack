@@ -30,6 +30,7 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docUploading, setDocUploading] = useState(false);
   const [waiveDeposit, setWaiveDeposit] = useState(false);
+  const [roomStatus, setRoomStatus] = useState<string | null>(null);
   const [form, setForm] = useState<CheckInData>({
     reservation_id: reservationId,
     assigned_unit_id: unitId,
@@ -40,6 +41,18 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
     id_document_number: "",
     notes: "",
   });
+
+  // Check room readiness
+  useEffect(() => {
+    if (!unitId || !user?.property_id) return;
+    api.get<any>(`/api/v1/properties/${user.property_id}/units`)
+      .then((data) => {
+        const units = Array.isArray(data) ? data : data?.data || [];
+        const unit = units.find((u: any) => u.id === unitId);
+        if (unit) setRoomStatus(unit.status);
+      })
+      .catch(() => {});
+  }, [api, unitId, user?.property_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +85,32 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <h3 className="text-lg font-semibold">Check-In</h3>
+
+      {/* Room Readiness Indicator */}
+      {roomStatus && (
+        <div className={`p-3 rounded-lg border flex items-center gap-2 ${
+          roomStatus === "available" ? "bg-green-50 border-green-200" :
+          roomStatus === "cleaning" ? "bg-orange-50 border-orange-200" :
+          roomStatus === "maintenance" ? "bg-red-50 border-red-200" :
+          "bg-yellow-50 border-yellow-200"
+        }`}>
+          <div className={`w-3 h-3 rounded-full ${
+            roomStatus === "available" ? "bg-green-500" :
+            roomStatus === "cleaning" ? "bg-orange-500" :
+            roomStatus === "maintenance" ? "bg-red-500" :
+            "bg-yellow-500"
+          }`} />
+          <span className={`text-sm font-medium ${
+            roomStatus === "available" ? "text-green-800" :
+            roomStatus === "cleaning" ? "text-orange-800" :
+            roomStatus === "maintenance" ? "text-red-800" :
+            "text-yellow-800"
+          }`}>
+            Room Status: {roomStatus === "available" ? "Ready ✓" : roomStatus === "cleaning" ? "Cleaning in Progress — Not Ready" : roomStatus === "maintenance" ? "Under Maintenance — Cannot Check In" : roomStatus.replace("_", " ").toUpperCase()}
+          </span>
+        </div>
+      )}
+
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">{error}</div>}
 
       <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -113,7 +152,9 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
           </label>
         </div>
         {!waiveDeposit && (
-          <div className="grid grid-cols-2 gap-3">
+          <>
+            <p className="text-xs text-blue-600 mb-2">Suggested: ₹2,000 (1 night rate). Adjust as needed.</p>
+            <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700">Amount *</label>
               <input type="number" required min={1} value={form.deposit_amount} onChange={(e) => setForm({ ...form, deposit_amount: parseFloat(e.target.value) || 0 })} className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
@@ -129,6 +170,7 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
               </select>
             </div>
           </div>
+          </>
         )}
         {!waiveDeposit && form.deposit_method !== "cash" && (
           <div className="mt-2">
@@ -305,6 +347,17 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
                     <span className="text-green-600"> • Refund ₹{(summary.deposit_held - Number(summary.balance) - lateCharge * 1.18).toFixed(0)} to guest</span>
                   )}
                 </p>
+                {Number(summary.balance) + lateCharge * 1.18 < summary.deposit_held && (
+                  <div className="mt-2">
+                    <label className="block text-xs text-gray-600 mb-1">Refund Method:</label>
+                    <select className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI (to original account)</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="adjust">Adjust against future booking</option>
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -327,13 +380,31 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
           </div>
           <div className="space-y-1 ml-6">
             {pendingLaundry.map((order: any, i: number) => (
-              <p key={i} className="text-xs text-yellow-700">
-                #{order.order_number} — Status: <span className="font-medium capitalize">{order.status}</span>
-                {order.grand_total > 0 && !order.posted_to_folio && <span className="text-red-600 ml-1">(₹{order.grand_total} not billed)</span>}
-              </p>
+              <div key={i} className="flex items-center justify-between text-xs text-yellow-700 py-0.5">
+                <span>
+                  #{order.order_number} — Status: <span className="font-medium capitalize">{order.status}</span>
+                  {order.grand_total > 0 && !order.posted_to_folio && <span className="text-red-600 ml-1">(₹{order.grand_total} not billed)</span>}
+                </span>
+                {!order.posted_to_folio && order.grand_total > 0 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.post(`/api/v1/laundry/orders/${order.id}/post-to-folio`);
+                        // Refresh pre-checkout summary
+                        const billData = await api.get<BillSummary>("/api/v1/operations/pre-checkout", { reservation_id: reservationId });
+                        setSummary(billData);
+                        setPendingLaundry((prev: any[]) => prev.map((o: any) => o.id === order.id ? { ...o, posted_to_folio: true } : o));
+                      } catch { /* silent */ }
+                    }}
+                    className="px-2 py-0.5 text-[10px] bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                  >
+                    Post to Bill
+                  </button>
+                )}
+              </div>
             ))}
           </div>
-          <p className="text-xs text-yellow-600 mt-2 ml-6">Please resolve pending laundry before checkout or charges may be missed.</p>
+          <p className="text-xs text-yellow-600 mt-2 ml-6">Unbilled laundry charges will be lost if you proceed without posting.</p>
         </div>
       )}
 

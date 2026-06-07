@@ -154,6 +154,23 @@ func (h *Handler) CancelReservation(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]string{"message": "reservation cancelled"})
 }
 
+func (h *Handler) ConfirmReservation(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaims(r.Context())
+	resID, err := uuid.Parse(chi.URLParam(r, "reservationID"))
+	if err != nil {
+		response.Err(w, apperrors.BadRequest("invalid reservation id"))
+		return
+	}
+
+	if err := h.service.ConfirmReservation(r.Context(), resID, claims.TenantID); err != nil {
+		h.log.Error().Err(err).Msg("confirm reservation failed")
+		response.Err(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]string{"message": "reservation confirmed"})
+}
+
 func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	resID, err := uuid.Parse(chi.URLParam(r, "reservationID"))

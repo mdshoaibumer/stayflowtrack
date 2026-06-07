@@ -42,6 +42,9 @@ function OperationsContent() {
   const [activeCheckout, setActiveCheckout] = useState<TodayOperation | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showWalkIn, setShowWalkIn] = useState(action === "walkin");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [lastCheckoutReservationId, setLastCheckoutReservationId] = useState<string | null>(null);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
 
   const propertyId = user?.property_id || "";
 
@@ -80,10 +83,36 @@ function OperationsContent() {
 
   const handleCheckOut = async (data: any) => {
     await api.post("/api/v1/operations/check-out", data);
+    setLastCheckoutReservationId(data.reservation_id);
     setActiveCheckout(null);
-    setSuccessMsg("Check-out completed successfully!");
-    setTimeout(() => setSuccessMsg(null), 3000);
+    setSuccessMsg("Check-out completed successfully! Generate invoice below.");
     fetchOperations();
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!lastCheckoutReservationId) return;
+    setGeneratingInvoice(true);
+    try {
+      // Get the folio for this reservation to find the invoice
+      const folio = await api.get<any>(`/api/v1/billing/folios/reservation/${lastCheckoutReservationId}`);
+      if (folio?.id) {
+        // Generate PDF
+        const result = await api.post<any>(`/api/v1/billing/invoices/${folio.id}/pdf`);
+        const url = result?.url || result?.pdf_url || result?.download_url;
+        if (url) {
+          window.open(url, "_blank");
+        } else {
+          const pdfData = await api.get<any>(`/api/v1/billing/invoices/${folio.id}/pdf`);
+          const pdfUrl = pdfData?.url || pdfData?.pdf_url || pdfData?.download_url;
+          if (pdfUrl) window.open(pdfUrl, "_blank");
+        }
+      }
+    } catch { /* silent */ }
+    finally {
+      setGeneratingInvoice(false);
+      setLastCheckoutReservationId(null);
+      setSuccessMsg(null);
+    }
   };
 
   const handleExtendStay = async (reservationId: string, newCheckout: string) => {
@@ -94,6 +123,25 @@ function OperationsContent() {
     setSuccessMsg("Stay extended successfully!");
     setTimeout(() => setSuccessMsg(null), 3000);
     fetchOperations();
+  };
+
+  const handleNoShow = async (reservationId: string) => {
+    if (!confirm("Mark this guest as No-Show? This will cancel the reservation.")) return;
+    try {
+      await api.post("/api/v1/operations/no-show", { reservation_id: reservationId });
+      setSuccessMsg("Marked as No-Show. Reservation cancelled.");
+      setTimeout(() => setSuccessMsg(null), 3000);
+      fetchOperations();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to mark no-show");
+    }
+  };
+
+  // Filter function for search
+  const filterBySearch = (items: TodayOperation[]) => {
+    if (!searchQuery) return items;
+    const q = searchQuery.toLowerCase();
+    return items.filter((item) => item.guest_name.toLowerCase().includes(q) || item.unit_number.toLowerCase().includes(q));
   };
 
   const tabs = [
@@ -119,11 +167,44 @@ function OperationsContent() {
 
       {/* Success message */}
       {successMsg && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-          {successMsg}
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            {successMsg}
+          </div>
+          {lastCheckoutReservationId && (
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={handleGenerateInvoice}
+                disabled={generatingInvoice}
+                className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {generatingInvoice ? "Generating..." : "📄 Generate & Print Invoice"}
+              </button>
+              <button
+                onClick={() => { setLastCheckoutReservationId(null); setSuccessMsg(null); }}
+                className="px-3 py-1.5 text-xs border rounded-md hover:bg-white"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Search */}
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search by guest name or unit number..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b overflow-x-auto">
@@ -159,16 +240,18 @@ function OperationsContent() {
       {/* Arrivals Tab */}
       {!loading && tab === "arrivals" && (
         <div className="space-y-3">
-          {arrivals.length === 0 ? (
-            <EmptyState message="No arrivals expected today" />
+          {filterBySearch(arrivals).length === 0 ? (
+            <EmptyState message={searchQuery ? "No matching arrivals" : "No arrivals expected today"} />
           ) : (
-            arrivals.map((a) => (
+            filterBySearch(arrivals).map((a) => (
               <OperationCard
                 key={a.reservation_id}
                 operation={a}
                 actionLabel="Check In"
                 actionColor="bg-green-600 hover:bg-green-700"
                 onAction={() => setActiveCheckin(a)}
+                showNoShow
+                onNoShow={() => handleNoShow(a.reservation_id)}
               />
             ))
           )}
@@ -178,10 +261,10 @@ function OperationsContent() {
       {/* Departures Tab */}
       {!loading && tab === "departures" && (
         <div className="space-y-3">
-          {departures.length === 0 ? (
-            <EmptyState message="No departures today" />
+          {filterBySearch(departures).length === 0 ? (
+            <EmptyState message={searchQuery ? "No matching departures" : "No departures today"} />
           ) : (
-            departures.map((d) => (
+            filterBySearch(departures).map((d) => (
               <OperationCard
                 key={d.reservation_id}
                 operation={d}
@@ -199,10 +282,10 @@ function OperationsContent() {
       {/* In-House Guests Tab - extend stay from any day */}
       {!loading && tab === "inhouse" && (
         <div className="space-y-3">
-          {inHouse.length === 0 ? (
-            <EmptyState message="No guests currently in-house" />
+          {filterBySearch(inHouse).length === 0 ? (
+            <EmptyState message={searchQuery ? "No matching guests" : "No guests currently in-house"} />
           ) : (
-            inHouse.map((g) => (
+            filterBySearch(inHouse).map((g) => (
               <OperationCard
                 key={g.reservation_id}
                 operation={g}
@@ -319,19 +402,51 @@ function OperationsContent() {
   );
 }
 
-function OperationCard({ operation, actionLabel, actionColor, onAction, showExtend, onExtend }: {
+function OperationCard({ operation, actionLabel, actionColor, onAction, showExtend, onExtend, showNoShow, onNoShow }: {
   operation: TodayOperation;
   actionLabel: string;
   actionColor: string;
   onAction: () => void;
   showExtend?: boolean;
   onExtend?: (newDate: string) => void;
+  showNoShow?: boolean;
+  onNoShow?: () => void;
 }) {
+  const api = useApi();
+  const { user } = useAuth();
   const [showExtendForm, setShowExtendForm] = useState(false);
   const [newDate, setNewDate] = useState("");
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+  const [checkingConflict, setCheckingConflict] = useState(false);
 
   // Calculate additional nights and cost
   const additionalNights = newDate ? Math.max(0, Math.round((new Date(newDate).getTime() - new Date(operation.check_out_date).getTime()) / 86400000)) : 0;
+
+  // Check for conflicts when date changes
+  const checkConflict = async (date: string) => {
+    setNewDate(date);
+    setConflictWarning(null);
+    if (!date || !user?.property_id) return;
+    setCheckingConflict(true);
+    try {
+      const data = await api.get<any>("/api/v1/reservations", { property_id: user.property_id, per_page: "100" });
+      const reservations = Array.isArray(data) ? data : data?.data || [];
+      // Check if any other reservation uses the same unit during the extended period
+      const conflict = reservations.find((r: any) =>
+        r.unit_id === operation.unit_id &&
+        r.reservation_id !== operation.reservation_id &&
+        r.id !== operation.reservation_id &&
+        r.status !== "cancelled" &&
+        r.status !== "checked_out" &&
+        r.check_in_date < date &&
+        r.check_out_date > operation.check_out_date
+      );
+      if (conflict) {
+        setConflictWarning(`⚠️ Conflict: ${conflict.guest_name} has this unit booked from ${conflict.check_in_date}`);
+      }
+    } catch { /* silent */ }
+    finally { setCheckingConflict(false); }
+  };
 
   return (
     <div className="border rounded-lg p-4 bg-white shadow-sm">
@@ -343,6 +458,11 @@ function OperationCard({ operation, actionLabel, actionColor, onAction, showExte
           </p>
         </div>
         <div className="flex gap-2">
+          {showNoShow && onNoShow && (
+            <button onClick={onNoShow} className="px-3 py-1.5 text-xs border border-red-300 text-red-600 rounded-md hover:bg-red-50 font-medium">
+              No-Show
+            </button>
+          )}
           {showExtend && onExtend && (
             <button onClick={() => setShowExtendForm(!showExtendForm)} className="px-3 py-1.5 text-xs border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 font-medium">
               Extend Stay
@@ -357,12 +477,18 @@ function OperationCard({ operation, actionLabel, actionColor, onAction, showExte
         <div className="mt-3 pt-3 border-t space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-xs text-gray-600 whitespace-nowrap">New checkout:</label>
-            <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} min={operation.check_out_date} className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm" />
-            <button onClick={() => { if (newDate && onExtend) { onExtend(newDate); setShowExtendForm(false); } }} disabled={!newDate} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+            <input type="date" value={newDate} onChange={(e) => checkConflict(e.target.value)} min={operation.check_out_date} className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm" />
+            <button onClick={() => { if (newDate && onExtend && !conflictWarning) { onExtend(newDate); setShowExtendForm(false); } }} disabled={!newDate || !!conflictWarning || checkingConflict} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
               Confirm
             </button>
           </div>
-          {additionalNights > 0 && (
+          {checkingConflict && <p className="text-xs text-gray-500">Checking availability...</p>}
+          {conflictWarning && (
+            <p className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+              {conflictWarning}
+            </p>
+          )}
+          {additionalNights > 0 && !conflictWarning && (
             <p className="text-xs text-blue-700 bg-blue-50 p-2 rounded">
               +{additionalNights} additional night{additionalNights > 1 ? "s" : ""} will be charged to guest&apos;s bill at the current room rate.
             </p>

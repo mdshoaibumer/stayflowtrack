@@ -152,13 +152,37 @@ func (r *Repository) PerformCheckIn(ctx context.Context, tenantID uuid.UUID, inp
 		}
 	}
 
+	// 5b. Record any advance payment made at booking time
+	var advanceAmount decimal.Decimal
+	var advanceMethod string
+	var advanceReference string
+	err = tx.QueryRow(ctx,
+		`SELECT COALESCE(advance_amount, 0), COALESCE(advance_method, ''), COALESCE(advance_reference, '')
+		 FROM reservations WHERE id = $1 AND tenant_id = $2`,
+		input.ReservationID, tenantID,
+	).Scan(&advanceAmount, &advanceMethod, &advanceReference)
+	if err == nil && advanceAmount.IsPositive() {
+		if advanceMethod == "" {
+			advanceMethod = "upi"
+		}
+		_, err = tx.Exec(ctx,
+			`INSERT INTO payments (tenant_id, folio_id, payment_type, payment_method, amount, reference_number, notes, received_by)
+			 VALUES ($1, $2, 'payment', $3, $4, $5, 'Advance payment at booking', $6)`,
+			tenantID, folioID, advanceMethod, advanceAmount, advanceReference, userID,
+		)
+		if err != nil {
+			return nil, uuid.Nil, fmt.Errorf("record advance payment: %w", err)
+		}
+	}
+
 	// 6. Update folio totals
+	totalPaid := input.DepositAmount.Add(advanceAmount)
 	_, err = tx.Exec(ctx,
 		`UPDATE folios SET
 			subtotal = $2, tax_total = $3, total_amount = $4,
 			paid_amount = $5, balance = $6
 		 WHERE id = $1`,
-		folioID, roomAmount, taxAmount, roomTotal, input.DepositAmount, roomTotal.Sub(input.DepositAmount),
+		folioID, roomAmount, taxAmount, roomTotal, totalPaid, roomTotal.Sub(totalPaid),
 	)
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("update folio totals: %w", err)

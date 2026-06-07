@@ -190,6 +190,21 @@ func (r *Repository) CancelReservation(ctx context.Context, id, tenantID uuid.UU
 	return nil
 }
 
+func (r *Repository) ConfirmReservation(ctx context.Context, id, tenantID uuid.UUID) error {
+	result, err := r.pool.Exec(ctx,
+		`UPDATE reservations SET status = 'confirmed', updated_at = NOW()
+		 WHERE id = $1 AND tenant_id = $2 AND status = 'pending'`,
+		id, tenantID,
+	)
+	if err != nil {
+		return fmt.Errorf("confirm reservation: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return apperrors.BadRequest("reservation must be in 'pending' status to confirm")
+	}
+	return nil
+}
+
 func (r *Repository) CheckIn(ctx context.Context, id, tenantID uuid.UUID) error {
 	result, err := r.pool.Exec(ctx,
 		`UPDATE reservations SET status = 'checked_in', actual_check_in = NOW()

@@ -9,13 +9,21 @@ import (
 )
 
 type Config struct {
-	App      AppConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	Storage  StorageConfig
-	CORS     CORSConfig
-	Log      LogConfig
-	Razorpay RazorpayConfig
+	App           AppConfig
+	Database      DatabaseConfig
+	JWT           JWTConfig
+	Storage       StorageConfig
+	CORS          CORSConfig
+	Log           LogConfig
+	Razorpay      RazorpayConfig
+	Notifications NotificationConfig
+}
+
+type NotificationConfig struct {
+	Provider      string // "log", "gupshup"
+	GupshupAPIKey string
+	GupshupApp    string
+	WebhookSecret string
 }
 
 type RazorpayConfig struct {
@@ -133,6 +141,12 @@ func Load() (*Config, error) {
 			KeyID:         getEnv("RAZORPAY_KEY_ID", ""),
 			KeySecret:     getEnv("RAZORPAY_KEY_SECRET", ""),
 			WebhookSecret: getEnv("RAZORPAY_WEBHOOK_SECRET", ""),
+		},
+		Notifications: NotificationConfig{
+			Provider:      getEnv("NOTIFICATION_PROVIDER", "log"),
+			GupshupAPIKey: getEnv("GUPSHUP_API_KEY", ""),
+			GupshupApp:    getEnv("GUPSHUP_APP_NAME", ""),
+			WebhookSecret: getEnv("NOTIFICATION_WEBHOOK_SECRET", ""),
 		},
 	}
 

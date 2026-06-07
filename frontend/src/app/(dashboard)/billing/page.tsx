@@ -185,20 +185,27 @@ export default function BillingPage() {
           {/* Mobile cards */}
           <div className="space-y-3 lg:hidden">
             {invoices.map((inv) => (
-              <div key={inv.id} onClick={() => setSelectedFolio(inv.id)} className="border rounded-lg p-4 bg-white shadow-sm cursor-pointer active:bg-gray-50">
-                <div className="flex items-center justify-between mb-2">
+              <div key={inv.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                <div className="flex items-center justify-between mb-2" onClick={() => setSelectedFolio(inv.id)}>
                   <span className="font-mono text-xs text-gray-500">{inv.invoice_number}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[inv.status] || "bg-gray-100"}`}>
                     {inv.status}
                   </span>
                 </div>
-                <p className="font-medium">{inv.guest_name}</p>
+                <p className="font-medium" onClick={() => setSelectedFolio(inv.id)}>{inv.guest_name}</p>
                 <p className="text-sm text-gray-500">{inv.unit_number}</p>
                 <div className="flex justify-between mt-2 text-sm">
                   <span className="text-gray-500">Total: ₹{inv.total_amount?.toLocaleString()}</span>
                   <span className={inv.balance > 0 ? "text-red-600 font-medium" : "text-green-600"}>
                     Balance: ₹{inv.balance?.toLocaleString()}
                   </span>
+                </div>
+                <div className="flex gap-2 mt-2 pt-2 border-t">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedFolio(inv.id); }}
+                    className="flex-1 px-2 py-1.5 text-xs border rounded-md hover:bg-gray-50 text-center"
+                  >View Details</button>
+                  <InvoicePDFButton invoiceId={inv.id} />
                 </div>
               </div>
             ))}
@@ -217,14 +224,15 @@ export default function BillingPage() {
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Balance</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600">Invoice</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {invoices.map((inv) => (
-                  <tr key={inv.id} onClick={() => setSelectedFolio(inv.id)} className="hover:bg-gray-50 cursor-pointer">
-                    <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number}</td>
-                    <td className="px-4 py-3 font-medium">{inv.guest_name}</td>
-                    <td className="px-4 py-3">{inv.unit_number}</td>
+                  <tr key={inv.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-xs cursor-pointer" onClick={() => setSelectedFolio(inv.id)}>{inv.invoice_number}</td>
+                    <td className="px-4 py-3 font-medium cursor-pointer" onClick={() => setSelectedFolio(inv.id)}>{inv.guest_name}</td>
+                    <td className="px-4 py-3 cursor-pointer" onClick={() => setSelectedFolio(inv.id)}>{inv.unit_number}</td>
                     <td className="px-4 py-3 text-right">₹{inv.total_amount?.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right text-green-600">₹{inv.paid_amount?.toLocaleString()}</td>
                     <td className={`px-4 py-3 text-right font-medium ${inv.balance > 0 ? "text-red-600" : "text-green-600"}`}>
@@ -234,6 +242,9 @@ export default function BillingPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[inv.status] || "bg-gray-100"}`}>{inv.status}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-500">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "—"}</td>
+                    <td className="px-4 py-3 text-center">
+                      <InvoicePDFButton invoiceId={inv.id} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -565,6 +576,40 @@ function AddPaymentForm({ onSubmit, onCancel, loading, balance }: { onSubmit: (a
   );
 }
 
+// Invoice PDF Button - Generate & Download on the spot
+function InvoicePDFButton({ invoiceId }: { invoiceId: string }) {
+  const api = useApi();
+  const [loading, setLoading] = useState(false);
+
+  const handleGenerate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoading(true);
+    try {
+      const result = await api.post<any>(`/api/v1/billing/invoices/${invoiceId}/pdf`);
+      const url = result?.url || result?.pdf_url || result?.download_url;
+      if (url) {
+        window.open(url, "_blank");
+      } else {
+        const pdfData = await api.get<any>(`/api/v1/billing/invoices/${invoiceId}/pdf`);
+        const pdfUrl = pdfData?.url || pdfData?.pdf_url || pdfData?.download_url;
+        if (pdfUrl) window.open(pdfUrl, "_blank");
+      }
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <button
+      onClick={handleGenerate}
+      disabled={loading}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+    >
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+      {loading ? "..." : "PDF"}
+    </button>
+  );
+}
+
 // Quick Charge Modal - allows adding a charge to any currently checked-in guest from dashboard
 function QuickChargeModal({ propertyId, onClose, onSuccess }: { propertyId: string; onClose: () => void; onSuccess: () => void }) {
   const api = useApi();
@@ -646,6 +691,31 @@ function QuickChargeModal({ propertyId, onClose, onSuccess }: { propertyId: stri
         <p className="text-sm text-gray-500">Add a charge to any occupied room</p>
 
         {error && <div className="p-2 bg-red-50 text-red-700 text-sm rounded">{error}</div>}
+
+        {/* Preset Quick Charges */}
+        <div>
+          <p className="text-xs font-medium text-gray-600 mb-2">Quick Presets:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Extra Bed", amount: 500, cat: "extra_bed", desc: "Extra bed charge" },
+              { label: "Parking (Day)", amount: 200, cat: "parking", desc: "Parking charge - 1 day" },
+              { label: "Late Checkout", amount: 1000, cat: "late_checkout", desc: "Late checkout charge" },
+              { label: "Extra Pillow/Blanket", amount: 200, cat: "other", desc: "Extra pillow/blanket" },
+              { label: "Food Delivery", amount: 100, cat: "food_beverage", desc: "Food delivery handling fee" },
+              { label: "Iron Box Usage", amount: 100, cat: "other", desc: "Iron box usage" },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => { setCategory(preset.cat); setDescription(preset.desc); setAmount(preset.amount); }}
+                className="text-left px-2 py-1.5 text-xs border rounded hover:bg-blue-50 hover:border-blue-300"
+              >
+                <span className="font-medium">{preset.label}</span>
+                <span className="text-gray-500 ml-1">₹{preset.amount}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <select value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm">
           <option value="">Select occupied room...</option>

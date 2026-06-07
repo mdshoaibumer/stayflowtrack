@@ -351,9 +351,9 @@ export default function ReportsPage() {
       )}
 
       {/* Generic Report Table for other types */}
-      {reportData && !loading && !["daily_collection", "outstanding"].includes(activeReport) && (
+      {reportData && !loading && !["daily_collection", "outstanding", "end_of_day"].includes(activeReport) && (
         <div className="border rounded-lg bg-white p-4">
-          <h3 className="font-medium text-sm text-gray-700 mb-4 capitalize">{activeReport} Report</h3>
+          <h3 className="font-medium text-sm text-gray-700 mb-4 capitalize">{activeReport.replace(/_/g, " ")} Report</h3>
           <ReportTable data={reportData} type={activeReport} />
         </div>
       )}
@@ -404,6 +404,63 @@ function ReportTable({ data, type }: { data: any; type: ReportType }) {
   const items = Array.isArray(data) ? data : data?.data || (typeof data === "object" ? [data] : []);
   if (items.length === 0) return <p className="text-sm text-gray-400">No data for this period</p>;
 
+  // GST Report: show summary + invoice table
+  if (type === "gst" && items.length > 0) {
+    const totalTaxable = items.reduce((sum: number, inv: any) => sum + (Number(inv.total_amount) || 0) - (Number(inv.tax_amount) || 0), 0);
+    const totalTax = items.reduce((sum: number, inv: any) => sum + (Number(inv.tax_amount) || 0), 0);
+    const totalInvoiceAmount = items.reduce((sum: number, inv: any) => sum + (Number(inv.total_amount) || 0), 0);
+    const cgst = totalTax / 2;
+    const sgst = totalTax / 2;
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-blue-50 rounded-lg p-3 text-center">
+            <p className="text-lg font-bold text-blue-700">₹{totalTaxable.toLocaleString()}</p>
+            <p className="text-xs text-blue-600">Taxable Amount</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 text-center">
+            <p className="text-lg font-bold text-green-700">₹{cgst.toLocaleString()}</p>
+            <p className="text-xs text-green-600">CGST (9%)</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 text-center">
+            <p className="text-lg font-bold text-green-700">₹{sgst.toLocaleString()}</p>
+            <p className="text-xs text-green-600">SGST (9%)</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-3 text-center">
+            <p className="text-lg font-bold text-purple-700">₹{totalInvoiceAmount.toLocaleString()}</p>
+            <p className="text-xs text-purple-600">Total Invoice</p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500">SAC Code: 996311 (Hotel accommodation) • {items.length} invoices</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium">Invoice #</th>
+                <th className="text-left px-3 py-2 font-medium">Guest</th>
+                <th className="text-right px-3 py-2 font-medium">Taxable</th>
+                <th className="text-right px-3 py-2 font-medium">Tax</th>
+                <th className="text-right px-3 py-2 font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {items.slice(0, 50).map((inv: any, i: number) => (
+                <tr key={i}>
+                  <td className="px-3 py-2 font-mono text-xs">{inv.invoice_number || "—"}</td>
+                  <td className="px-3 py-2">{inv.guest_name || "—"}</td>
+                  <td className="px-3 py-2 text-right">₹{((Number(inv.total_amount) || 0) - (Number(inv.tax_amount) || 0)).toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right text-green-600">₹{(Number(inv.tax_amount) || 0).toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right font-medium">₹{(Number(inv.total_amount) || 0).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   if (items.length === 1 && !Array.isArray(data)) {
     const obj = items[0];
     return (
@@ -411,7 +468,7 @@ function ReportTable({ data, type }: { data: any; type: ReportType }) {
         {Object.entries(obj).map(([key, value]) => (
           <div key={key} className="flex justify-between text-sm py-1 border-b border-gray-50">
             <span className="text-gray-500 capitalize">{key.replace(/_/g, " ")}</span>
-            <span className="font-medium">{typeof value === "number" ? (key.includes("rate") ? `${(value as number).toFixed(1)}%` : `${(value as number).toLocaleString()}`) : String(value)}</span>
+            <span className="font-medium">{typeof value === "number" ? (key.includes("rate") ? `${(value as number).toFixed(1)}%` : `₹${(value as number).toLocaleString()}`) : String(value ?? "—")}</span>
           </div>
         ))}
       </div>
@@ -427,7 +484,7 @@ function ReportTable({ data, type }: { data: any; type: ReportType }) {
         </thead>
         <tbody className="divide-y">
           {items.slice(0, 50).map((row: any, i: number) => (
-            <tr key={i}>{headers.map((h) => (<td key={h} className="px-3 py-2">{typeof row[h] === "number" ? row[h].toLocaleString() : String(row[h] ?? "\u2014")}</td>))}</tr>
+            <tr key={i}>{headers.map((h) => (<td key={h} className="px-3 py-2">{typeof row[h] === "number" ? (h.includes("amount") || h.includes("rate") || h.includes("total") || h.includes("revenue") ? `₹${row[h].toLocaleString()}` : row[h].toLocaleString()) : String(row[h] ?? "—")}</td>))}</tr>
           ))}
         </tbody>
       </table>

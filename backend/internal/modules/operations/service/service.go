@@ -141,6 +141,43 @@ func (s *Service) ExtendStay(ctx context.Context, tenantID, userID uuid.UUID, in
 		return nil, fmt.Errorf("record extension: %w", err)
 	}
 
+	// Auto-post extension charges to the guest's folio
+	var folioID uuid.UUID
+	err = tx.QueryRow(ctx,
+		`SELECT id FROM folios WHERE reservation_id = $1 AND tenant_id = $2 AND status = 'open' LIMIT 1`,
+		input.ReservationID, tenantID,
+	).Scan(&folioID)
+	if err == nil {
+		// Calculate tax (18% GST on room charges)
+		taxRate := decimal.NewFromInt(18)
+		taxAmount := additionalAmount.Mul(taxRate).Div(decimal.NewFromInt(100)).Round(2)
+		totalWithTax := additionalAmount.Add(taxAmount)
+
+		description := fmt.Sprintf("Stay extension: %d additional night(s) @ ₹%s/night", additionalNights, rate.StringFixed(0))
+		_, err = tx.Exec(ctx,
+			`INSERT INTO folio_line_items (tenant_id, folio_id, category, description, quantity, unit_price, tax_rate, tax_amount, amount, date, created_by)
+			 VALUES ($1, $2, 'room_charge', $3, $4, $5, $6, $7, $8, NOW(), $9)`,
+			tenantID, folioID, description, additionalNights, rate, taxRate, taxAmount, totalWithTax, userID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("post extension charge to folio: %w", err)
+		}
+
+		// Recalculate folio totals
+		_, err = tx.Exec(ctx,
+			`UPDATE folios SET
+				total_charges = (SELECT COALESCE(SUM(amount), 0) FROM folio_line_items WHERE folio_id = $1 AND voided = false),
+				balance = (SELECT COALESCE(SUM(amount), 0) FROM folio_line_items WHERE folio_id = $1 AND voided = false) -
+						  (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE folio_id = $1),
+				updated_at = NOW()
+			 WHERE id = $1`,
+			folioID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("recalculate folio: %w", err)
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit: %w", err)
 	}

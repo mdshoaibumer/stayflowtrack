@@ -77,6 +77,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
     guest_id: "",
     unit_number: "",
     notes: "",
+    service_type: "regular" as "regular" | "express",
   });
   const [items, setItems] = useState<LaundryItem[]>([
     { item_name: "", quantity: 1, rate: 0 },
@@ -127,7 +128,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
     }
   };
 
-  const total = items.reduce((sum, item) => sum + item.quantity * item.rate, 0);
+  const total = items.reduce((sum, item) => sum + item.quantity * item.rate, 0) * (form.service_type === "express" ? 2 : 1);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +141,11 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
     try {
       await onSubmit({
         ...form,
-        items: validItems,
+        items: validItems.map((i) => ({
+          ...i,
+          rate: form.service_type === "express" ? i.rate * 2 : i.rate,
+        })),
+        service_type: form.service_type,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create order");
@@ -172,6 +177,30 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
               <input type="radio" name="type" checked={form.order_type === "house"} onChange={() => setForm({ ...form, order_type: "house" })} className="text-blue-600" />
               <span className="text-sm">House Laundry</span>
             </label>
+          </div>
+
+          {/* Service Type (Regular / Express) */}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, service_type: "regular" })}
+              className={`flex-1 py-2 px-3 text-sm rounded-md border-2 font-medium transition-colors ${
+                form.service_type === "regular" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              Regular
+              <span className="block text-xs font-normal text-gray-500 mt-0.5">24-48 hours</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, service_type: "express" })}
+              className={`flex-1 py-2 px-3 text-sm rounded-md border-2 font-medium transition-colors ${
+                form.service_type === "express" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              Express (2× rate)
+              <span className="block text-xs font-normal text-gray-500 mt-0.5">Same day</span>
+            </button>
           </div>
 
           {/* Guest search */}
@@ -271,7 +300,12 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
                 </div>
               ))}
             </div>
-            {total > 0 && <p className="text-sm font-medium mt-2">Total: ₹{total.toFixed(2)}</p>}
+            {total > 0 && (
+              <p className="text-sm font-medium mt-2">
+                Total: ₹{total.toFixed(2)}
+                {form.service_type === "express" && <span className="text-orange-600 text-xs ml-2">(Express: 2× rate applied)</span>}
+              </p>
+            )}
           </div>
 
           <div>

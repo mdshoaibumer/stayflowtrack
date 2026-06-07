@@ -104,8 +104,21 @@ func main() {
 	notifRepo := notifrepo.New(db)
 	saasRepo := saasrepo.New(db)
 
-	// Notification provider (swap for production)
-	notifProvider := notifprovider.NewLogProvider()
+	// Notification provider (env-driven: NOTIFICATION_PROVIDER=log|gupshup)
+	var notifProvider notifprovider.Provider
+	switch cfg.Notifications.Provider {
+	case "gupshup":
+		notifProvider = notifprovider.NewGupshupProvider(notifprovider.GupshupConfig{
+			APIKey:  cfg.Notifications.GupshupAPIKey,
+			AppName: cfg.Notifications.GupshupApp,
+		})
+		log.Info().Msg("using gupshup notification provider")
+	default:
+		notifProvider = notifprovider.NewLogProvider()
+		if cfg.App.Env == "production" {
+			log.Warn().Msg("using log notification provider in production — set NOTIFICATION_PROVIDER=gupshup for real delivery")
+		}
+	}
 
 	// Razorpay client (nil in dev if no keys configured)
 	var razorpayClient *saasrazorpay.Client
@@ -180,6 +193,7 @@ func main() {
 	// Health check
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
+	r.Get("/metrics", middleware.MetricsHandler)
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
@@ -253,6 +267,7 @@ func main() {
 				r.Get("/{reservationID}", resHandler.GetReservation)
 				r.Put("/{reservationID}", resHandler.UpdateReservation)
 				r.Post("/{reservationID}/cancel", resHandler.CancelReservation)
+				r.Post("/{reservationID}/confirm", resHandler.ConfirmReservation)
 				r.Post("/{reservationID}/check-in", resHandler.CheckIn)
 				r.Post("/{reservationID}/check-out", resHandler.CheckOut)
 				r.Get("/availability", resHandler.CheckAvailability)

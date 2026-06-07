@@ -223,6 +223,8 @@ function CreateGuestModal({ onClose, onCreated }: { onClose: () => void; onCreat
     id_type: "",
     id_number: "",
     nationality: "Indian",
+    company_name: "",
+    gstin: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -294,6 +296,24 @@ function CreateGuestModal({ onClose, onCreated }: { onClose: () => void; onCreat
             <div>
               <label className="block text-sm font-medium text-gray-700">Nationality</label>
               <input type="text" value={form.nationality} onChange={(e) => update("nationality", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            </div>
+
+            {/* B2B / GST Fields */}
+            <div className="border-t pt-4">
+              <p className="text-xs font-medium text-gray-500 uppercase mb-3">Corporate / GST (for B2B invoicing)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                  <input type="text" value={form.company_name} onChange={(e) => update("company_name", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="ABC Pvt Ltd" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">GSTIN</label>
+                  <input type="text" value={form.gstin} onChange={(e) => update("gstin", e.target.value.toUpperCase())} maxLength={15} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="22AAAAA0000A1Z5" />
+                  {form.gstin && form.gstin.length !== 15 && (
+                    <p className="text-xs text-red-500 mt-1">GSTIN must be 15 characters</p>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 justify-end pt-2">
               <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50">Cancel</button>
