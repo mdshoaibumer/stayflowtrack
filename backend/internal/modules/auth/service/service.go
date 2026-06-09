@@ -29,12 +29,11 @@ func New(repo *repository.Repository, jwtCfg config.JWTConfig) *Service {
 }
 
 type RegisterTenantInput struct {
-	TenantName string `json:"tenant_name" validate:"required,min=2,max=100"`
-	Email      string `json:"email" validate:"required,email"`
-	Password   string `json:"password" validate:"required,min=8,max=72"`
-	FirstName  string `json:"first_name" validate:"required,min=1,max=100"`
-	LastName   string `json:"last_name" validate:"required,min=1,max=100"`
-	Phone      string `json:"phone" validate:"omitempty,max=20"`
+	FullName     string `json:"full_name" validate:"required,min=2,max=200"`
+	Email        string `json:"email" validate:"required,email"`
+	Password     string `json:"password" validate:"required,min=8,max=72"`
+	PropertyName string `json:"property_name" validate:"required,min=2,max=100"`
+	Phone        string `json:"phone" validate:"omitempty,max=20"`
 }
 
 type CreateUserInput struct {
@@ -52,6 +51,37 @@ type LoginInput struct {
 	TenantSlug string `json:"tenant_slug" validate:"omitempty"`
 }
 
+type LoginResult struct {
+	AccessToken  string        `json:"access_token"`
+	RefreshToken string        `json:"refresh_token"`
+	ExpiresIn    int64         `json:"expires_in"`
+	User         *UserResponse `json:"user"`
+}
+
+// UserResponse is the DTO returned to the frontend for user info.
+type UserResponse struct {
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	FullName   string `json:"full_name"`
+	Role       string `json:"role"`
+	TenantID   string `json:"tenant_id"`
+	PropertyID string `json:"property_id,omitempty"`
+}
+
+func newUserResponse(u *domain.User) *UserResponse {
+	fullName := strings.TrimSpace(u.FirstName + " " + u.LastName)
+	if u.LastName == "." {
+		fullName = u.FirstName
+	}
+	return &UserResponse{
+		ID:       u.ID.String(),
+		Email:    u.Email,
+		FullName: fullName,
+		Role:     u.RoleName,
+		TenantID: u.TenantID.String(),
+	}
+}
+
 type RefreshInput struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
@@ -66,13 +96,14 @@ type PasswordResetConfirmInput struct {
 }
 
 type RegisterTenantResult struct {
-	Tenant *domain.Tenant    `json:"tenant"`
-	User   *domain.User      `json:"user"`
-	Tokens *domain.TokenPair `json:"tokens"`
+	Tenant       *domain.Tenant `json:"tenant"`
+	User         *UserResponse  `json:"user"`
+	AccessToken  string         `json:"access_token"`
+	RefreshToken string         `json:"refresh_token"`
 }
 
 func (s *Service) RegisterTenant(ctx context.Context, input RegisterTenantInput) (*RegisterTenantResult, error) {
-	slug := generateSlug(input.TenantName)
+	slug := generateSlug(input.PropertyName)
 
 	existing, err := s.repo.GetTenantBySlug(ctx, slug)
 	if err != nil {
@@ -90,8 +121,11 @@ func (s *Service) RegisterTenant(ctx context.Context, input RegisterTenantInput)
 		return nil, apperrors.Conflict("a user with this email already exists")
 	}
 
+	// Split full_name into first/last name
+	firstName, lastName := splitFullName(input.FullName)
+
 	tenant := &domain.Tenant{
-		Name:  input.TenantName,
+		Name:  input.PropertyName,
 		Slug:  slug,
 		Email: input.Email,
 		Phone: input.Phone,
@@ -116,8 +150,8 @@ func (s *Service) RegisterTenant(ctx context.Context, input RegisterTenantInput)
 		RoleID:       role.ID,
 		Email:        input.Email,
 		PasswordHash: string(passwordHash),
-		FirstName:    input.FirstName,
-		LastName:     input.LastName,
+		FirstName:    firstName,
+		LastName:     lastName,
 		Phone:        input.Phone,
 		RoleName:     role.Name,
 	}
@@ -132,9 +166,10 @@ func (s *Service) RegisterTenant(ctx context.Context, input RegisterTenantInput)
 	}
 
 	return &RegisterTenantResult{
-		Tenant: tenant,
-		User:   user,
-		Tokens: tokens,
+		Tenant:       tenant,
+		User:         newUserResponse(user),
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
 	}, nil
 }
 
@@ -175,7 +210,7 @@ func (s *Service) CreateUser(ctx context.Context, tenantID uuid.UUID, input Crea
 	return user, nil
 }
 
-func (s *Service) Login(ctx context.Context, input LoginInput) (*domain.TokenPair, error) {
+func (s *Service) Login(ctx context.Context, input LoginInput) (*LoginResult, error) {
 	var user *domain.User
 	var err error
 
@@ -210,7 +245,12 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (*domain.TokenPai
 		return nil, err
 	}
 
-	return tokens, nil
+	return &LoginResult{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+		User:         newUserResponse(user),
+	}, nil
 }
 
 func (s *Service) RefreshToken(ctx context.Context, input RefreshInput) (*domain.TokenPair, error) {
@@ -393,4 +433,17 @@ func generateRandomToken(length int) (string, error) {
 		return "", fmt.Errorf("generate random token: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+// splitFullName splits a full name into first and last name parts.
+// If only one word, last name defaults to "." to satisfy NOT NULL constraint.
+func splitFullName(fullName string) (string, string) {
+	parts := strings.Fields(strings.TrimSpace(fullName))
+	if len(parts) == 0 {
+		return "User", "."
+	}
+	if len(parts) == 1 {
+		return parts[0], "."
+	}
+	return parts[0], strings.Join(parts[1:], " ")
 }

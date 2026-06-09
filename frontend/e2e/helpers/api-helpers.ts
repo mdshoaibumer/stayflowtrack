@@ -44,7 +44,7 @@ export async function registerTenant(data: {
 }) {
   return apiCall<{
     tenant: { id: string; name: string; slug: string };
-    user: { id: string; email: string; role_name: string; tenant_id: string };
+    user: { id: string; email: string; full_name: string; role: string; tenant_id: string };
     access_token: string;
     refresh_token: string;
   }>("POST", "/api/v1/auth/register", data);
@@ -57,7 +57,7 @@ export async function login(email: string, password: string) {
   return apiCall<{
     access_token: string;
     refresh_token: string;
-    user: { id: string; email: string; role_name: string; tenant_id: string; property_id?: string };
+    user: { id: string; email: string; full_name: string; role: string; tenant_id: string; property_id?: string };
   }>("POST", "/api/v1/auth/login", { email, password });
 }
 
@@ -93,7 +93,7 @@ export async function createUnitType(
 export async function createUnit(
   token: string,
   propertyId: string,
-  data: { unit_number: string; floor: number; unit_type_id: string }
+  data: { unit_number: string; floor: string; unit_type_id: string }
 ) {
   return apiCall<{ id: string; unit_number: string }>(
     "POST",
