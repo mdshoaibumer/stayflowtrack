@@ -54,11 +54,31 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Show dialog only for first-time users (check localStorage flag)
+    // Show dialog only for first-time users
     const demoShown = localStorage.getItem("demo_data_shown");
-    if (!demoShown && accessToken) {
+    if (demoShown || !accessToken) return;
+
+    // Also check server-side: if user already has properties, skip the dialog
+    const checkProperties = async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/api/v1/properties`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const properties = data.data || [];
+          if (properties.length > 0) {
+            // User already has data, mark as shown and don't display
+            localStorage.setItem("demo_data_shown", "true");
+            return;
+          }
+        }
+      } catch {
+        // On error, fall through and show the dialog
+      }
       setVisible(true);
-    }
+    };
+    checkProperties();
   }, [accessToken]);
 
   const handleSkip = () => {
@@ -113,7 +133,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           headers,
           body: JSON.stringify({
             unit_number: u.unit_number,
-            floor: u.floor,
+            floor: String(u.floor),
             unit_type_id: unitTypes[u.type_index]?.id,
           }),
         });

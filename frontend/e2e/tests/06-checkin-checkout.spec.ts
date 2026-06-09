@@ -48,6 +48,7 @@ test.describe("Check-in / Check-out Flow", () => {
 
   async function loginAndGo(page: any, route: string) {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();
@@ -55,8 +56,6 @@ test.describe("Check-in / Check-out Flow", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
-
-  test("should perform check-in via API", async ({ request }) => {
     // Confirm reservation first
     const confirmResp = await request.post(
       `${TEST_CONFIG.API_URL}/api/v1/reservations/${reservationId}/confirm`,

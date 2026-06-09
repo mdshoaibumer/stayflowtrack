@@ -156,3 +156,36 @@ export class DemoDataDialog {
     await expect(this.loadingIndicator).toBeHidden({ timeout: 30_000 });
   }
 }
+
+/**
+ * Dismiss the demo data dialog if it appears (for tests that login via UI).
+ * Sets localStorage flag before navigating to prevent the dialog from showing.
+ */
+export async function dismissDemoDialogIfPresent(page: Page) {
+  // Pre-set the flag to prevent dialog from appearing
+  await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
+}
+
+/**
+ * Login via UI and navigate to a route, bypassing the demo data dialog.
+ */
+export async function loginAndNavigate(page: Page, email: string, password: string, route: string) {
+  await page.goto("/login");
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/dashboard/, { timeout: 15_000 });
+
+  // Dismiss demo dialog if it appears
+  const dialog = page.locator("[data-testid='demo-data-dialog']");
+  const skipBtn = page.locator("[data-testid='skip-demo-data']");
+  if (await dialog.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await skipBtn.click();
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+  }
+
+  if (route && route !== "/dashboard") {
+    await page.goto(route);
+    await page.waitForLoadState("networkidle");
+  }
+}

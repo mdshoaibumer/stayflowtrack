@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 import { generateTestUser, TEST_CONFIG } from "../helpers/test-config";
 import { RegisterPage } from "../helpers/page-objects";
 
-test.describe("Full Happy Path - End to End", () => {
+test.describe.serial("Full Happy Path - End to End", () => {
   const user = generateTestUser("e2e-full");
   let authToken: string;
   let propertyId: string;
@@ -70,7 +70,7 @@ test.describe("Full Happy Path - End to End", () => {
       `${TEST_CONFIG.API_URL}/api/v1/properties/${propertyId}/units`,
       {
         headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
-        data: { unit_number: "E2E-101", floor: 1, unit_type_id: unitTypeId },
+        data: { unit_number: "E2E-101", floor: "1", unit_type_id: unitTypeId },
       }
     );
     expect(resp.status()).toBe(201);
@@ -223,6 +223,7 @@ test.describe("Full Happy Path - End to End", () => {
 
   test("Step 13: Verify dashboard shows updated metrics", async ({ page }) => {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(user.email);
     await page.locator('input[type="password"]').fill(user.password);
     await page.locator('button[type="submit"]').click();

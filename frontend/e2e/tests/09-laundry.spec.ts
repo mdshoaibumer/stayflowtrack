@@ -31,6 +31,7 @@ test.describe("Laundry", () => {
 
   async function loginAndGo(page: any, route: string) {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();

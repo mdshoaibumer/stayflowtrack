@@ -41,7 +41,13 @@ export default function GuestsPage() {
         search ? "/api/v1/guests/search" : "/api/v1/guests",
         params
       );
-      setGuests(Array.isArray(data) ? data : (data as any)?.data || (data as any) || []);
+      const rawGuests = Array.isArray(data) ? data : (data as any)?.data || (data as any) || [];
+      // Normalize: API returns first_name/last_name, UI uses full_name
+      const normalized = rawGuests.map((g: any) => ({
+        ...g,
+        full_name: g.full_name || [g.first_name, g.last_name].filter(Boolean).join(" ") || "Unknown",
+      }));
+      setGuests(normalized);
       if ((data as any)?.meta?.total_pages) setTotalPages((data as any).meta.total_pages);
       setError(null);
     } catch (err) {

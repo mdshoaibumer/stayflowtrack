@@ -92,8 +92,12 @@ test.describe("Demo Data Loading", () => {
     await dialog.skipDemoData();
     await expect(dialog.dialog).toBeHidden();
 
-    // Logout and login again
-    await page.evaluate(() => localStorage.clear());
+    // Logout (remove auth keys only, preserving demo_data_shown flag)
+    await page.evaluate(() => {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+    });
     await page.goto("/login");
 
     const loginPage = page;

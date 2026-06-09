@@ -104,7 +104,7 @@ export async function loadDemoData(token: string): Promise<DemoDataResult> {
       headers,
       body: JSON.stringify({
         unit_number: u.unit_number,
-        floor: u.floor,
+        floor: String(u.floor),
         unit_type_id: unitTypes[u.type_index].id,
       }),
     });
@@ -194,8 +194,12 @@ export async function loadMinimalDemoData(token: string) {
   const unit1Resp = await fetch(`${apiUrl}/api/v1/properties/${property.id}/units`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ unit_number: "101", floor: 1, unit_type_id: unitType.id }),
+    body: JSON.stringify({ unit_number: "101", floor: "1", unit_type_id: unitType.id }),
   });
+  if (!unit1Resp.ok) {
+    const errBody = await unit1Resp.text();
+    throw new Error(`Failed to create unit: ${unit1Resp.status} ${errBody}`);
+  }
   const unit1 = (await unit1Resp.json()).data;
 
   const guestResp = await fetch(`${apiUrl}/api/v1/guests`, {

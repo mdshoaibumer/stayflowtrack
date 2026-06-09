@@ -153,6 +153,14 @@ test.describe("Authentication", () => {
       });
       await expect(page).toHaveURL(/dashboard/, { timeout: 15_000 });
 
+      // Dismiss demo data dialog if it appears
+      const dialog = page.locator("[data-testid='demo-data-dialog']");
+      const skipBtn = page.locator("[data-testid='skip-demo-data']");
+      if (await dialog.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await skipBtn.click();
+        await expect(dialog).toBeHidden({ timeout: 5000 });
+      }
+
       // Click logout (look for logout button or link)
       const logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Sign Out"), [data-testid="logout"]');
       if (await logoutBtn.isVisible()) {

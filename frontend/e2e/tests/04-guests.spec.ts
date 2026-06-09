@@ -32,6 +32,7 @@ test.describe("Guest Management", () => {
 
   test("should navigate to guests page", async ({ page }) => {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();
@@ -44,6 +45,7 @@ test.describe("Guest Management", () => {
 
   test("should display existing guests", async ({ page }) => {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();
@@ -58,6 +60,7 @@ test.describe("Guest Management", () => {
 
   test("should create a new guest via UI", async ({ page }) => {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();
@@ -113,6 +116,7 @@ test.describe("Guest Management", () => {
     });
 
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();

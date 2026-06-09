@@ -35,12 +35,12 @@ const avatarColors = [
 ];
 
 function getAvatarColor(name: string): string {
-  const idx = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % avatarColors.length;
+  const idx = (name || "").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % avatarColors.length;
   return avatarColors[idx];
 }
 
 function getInitials(name: string): string {
-  return name
+  return (name || "?")
     .split(" ")
     .map((n) => n[0])
     .join("")

@@ -31,6 +31,7 @@ test.describe("Housekeeping", () => {
 
   async function loginAndGo(page: any, route: string) {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();
@@ -38,8 +39,6 @@ test.describe("Housekeeping", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
-
-  test("should navigate to housekeeping page", async ({ page }) => {
     await loginAndGo(page, "/housekeeping");
     await expect(page).toHaveURL(/housekeeping/);
     await expect(page.locator("body")).toBeVisible();

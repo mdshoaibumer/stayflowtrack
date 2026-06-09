@@ -33,6 +33,7 @@ test.describe("Reservation Management", () => {
 
   async function loginAndGo(page: any, route: string) {
     await page.goto("/login");
+    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
     await page.locator('input[type="email"]').fill(userEmail);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.locator('button[type="submit"]').click();
@@ -40,8 +41,6 @@ test.describe("Reservation Management", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
-
-  test("should navigate to reservations page", async ({ page }) => {
     await loginAndGo(page, "/reservations");
     await expect(page).toHaveURL(/reservations/);
   });
