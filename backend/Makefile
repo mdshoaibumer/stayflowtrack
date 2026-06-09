@@ -12,8 +12,15 @@ run: ## Run the server locally
 build: ## Build the server binary
 	go build -o bin/server ./cmd/server
 
-test: ## Run all tests
-	go test ./... -v -race -count=1
+test: ## Run all unit tests
+	go test ./internal/... -v -race -count=1
+
+test-integration: ## Run API integration tests (spins up embedded PostgreSQL)
+	go test -v -count=1 -timeout 180s ./tests/integration/...
+
+test-all: ## Run unit + integration tests
+	go test ./internal/... -v -race -count=1
+	go test -v -count=1 -timeout 180s ./tests/integration/...
 
 test-coverage: ## Run tests with coverage
 	go test ./... -v -race -coverprofile=coverage.out
