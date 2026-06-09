@@ -112,15 +112,19 @@ func TestRegisterTenant(t *testing.T) {
 		}
 
 		var apiResp apiResponse
-		json.NewDecoder(resp.Body).Decode(&apiResp)
-		resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		_ = resp.Body.Close()
 
 		if !apiResp.Success {
 			t.Fatalf("expected success=true, got error: %v", apiResp.Error)
 		}
 
 		var result registerResponse
-		json.Unmarshal(apiResp.Data, &result)
+		if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+			t.Fatalf("unmarshal data: %v", err)
+		}
 
 		// Verify all fields are correct
 		if result.User.FullName != "Rajesh Kumar" {
@@ -161,11 +165,15 @@ func TestRegisterTenant(t *testing.T) {
 		}
 
 		var apiResp apiResponse
-		json.NewDecoder(resp.Body).Decode(&apiResp)
-		resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		_ = resp.Body.Close()
 
 		var result registerResponse
-		json.Unmarshal(apiResp.Data, &result)
+		if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+			t.Fatalf("unmarshal data: %v", err)
+		}
 
 		if result.User.FullName != "Madonna" {
 			t.Errorf("expected full_name 'Madonna', got '%s'", result.User.FullName)
@@ -233,7 +241,7 @@ func TestLogin(t *testing.T) {
 		body, _ := io.ReadAll(regResp.Body)
 		t.Fatalf("setup failed: register returned %d: %s", regResp.StatusCode, string(body))
 	}
-	regResp.Body.Close()
+	_ = regResp.Body.Close()
 
 	t.Run("successful login", func(t *testing.T) {
 		req := loginRequest{
@@ -248,15 +256,19 @@ func TestLogin(t *testing.T) {
 		}
 
 		var apiResp apiResponse
-		json.NewDecoder(resp.Body).Decode(&apiResp)
-		resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		_ = resp.Body.Close()
 
 		if !apiResp.Success {
 			t.Fatalf("expected success, got error: %v", apiResp.Error)
 		}
 
 		var result loginResponse
-		json.Unmarshal(apiResp.Data, &result)
+		if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+			t.Fatalf("unmarshal data: %v", err)
+		}
 
 		if result.AccessToken == "" {
 			t.Error("expected non-empty access_token")
@@ -320,11 +332,15 @@ func TestRefreshToken(t *testing.T) {
 	}
 
 	var apiResp apiResponse
-	json.NewDecoder(resp.Body).Decode(&apiResp)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	_ = resp.Body.Close()
 
 	var regResult registerResponse
-	json.Unmarshal(apiResp.Data, &regResult)
+	if err := json.Unmarshal(apiResp.Data, &regResult); err != nil {
+		t.Fatalf("unmarshal data: %v", err)
+	}
 
 	t.Run("valid refresh", func(t *testing.T) {
 		body := map[string]string{"refresh_token": regResult.RefreshToken}
@@ -335,8 +351,10 @@ func TestRefreshToken(t *testing.T) {
 		}
 
 		var apiResp apiResponse
-		json.NewDecoder(resp.Body).Decode(&apiResp)
-		resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		_ = resp.Body.Close()
 
 		if !apiResp.Success {
 			t.Fatalf("expected success, got: %v", apiResp.Error)
@@ -362,7 +380,7 @@ func TestLogout(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200/204, got %d: %s", resp.StatusCode, string(body))
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 // --- Helpers ---
@@ -383,11 +401,15 @@ func registerAndGetToken(t *testing.T, email, name, property string) string {
 	}
 
 	var apiResp apiResponse
-	json.NewDecoder(resp.Body).Decode(&apiResp)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	_ = resp.Body.Close()
 
 	var result registerResponse
-	json.Unmarshal(apiResp.Data, &result)
+	if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+		t.Fatalf("unmarshal data: %v", err)
+	}
 	return result.AccessToken
 }
 

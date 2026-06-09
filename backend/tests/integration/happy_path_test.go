@@ -26,11 +26,15 @@ func TestFullHappyPath(t *testing.T) {
 	assertStatus(t, resp, http.StatusCreated, "register")
 
 	var apiResp apiResponse
-	json.NewDecoder(resp.Body).Decode(&apiResp)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	_ = resp.Body.Close()
 
 	var regResult registerResponse
-	json.Unmarshal(apiResp.Data, &regResult)
+	if err := json.Unmarshal(apiResp.Data, &regResult); err != nil {
+		t.Fatalf("unmarshal data: %v", err)
+	}
 
 	token := regResult.AccessToken
 	if token == "" {
@@ -46,11 +50,15 @@ func TestFullHappyPath(t *testing.T) {
 	assertStatus(t, loginResp, http.StatusOK, "login")
 
 	var loginApiResp apiResponse
-	json.NewDecoder(loginResp.Body).Decode(&loginApiResp)
-	loginResp.Body.Close()
+	if err := json.NewDecoder(loginResp.Body).Decode(&loginApiResp); err != nil {
+		t.Fatalf("decode login response: %v", err)
+	}
+	_ = loginResp.Body.Close()
 
 	var loginResult loginResponse
-	json.Unmarshal(loginApiResp.Data, &loginResult)
+	if err := json.Unmarshal(loginApiResp.Data, &loginResult); err != nil {
+		t.Fatalf("unmarshal login data: %v", err)
+	}
 
 	if loginResult.User.FullName != "Amit Patel" {
 		t.Errorf("login: expected full_name 'Amit Patel', got '%s'", loginResult.User.FullName)
@@ -146,11 +154,15 @@ func TestFullHappyPath(t *testing.T) {
 	assertStatus(t, resp, http.StatusOK, "get reservation")
 
 	var resApiResp apiResponse
-	json.NewDecoder(resp.Body).Decode(&resApiResp)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&resApiResp); err != nil {
+		t.Fatalf("decode reservation response: %v", err)
+	}
+	_ = resp.Body.Close()
 
 	var reservation map[string]any
-	json.Unmarshal(resApiResp.Data, &reservation)
+	if err := json.Unmarshal(resApiResp.Data, &reservation); err != nil {
+		t.Fatalf("unmarshal reservation: %v", err)
+	}
 
 	if reservation["guest_id"] != guestID {
 		t.Errorf("reservation guest_id mismatch: expected %s, got %v", guestID, reservation["guest_id"])
@@ -160,7 +172,7 @@ func TestFullHappyPath(t *testing.T) {
 	// Step 9: List reservations
 	resp = doGet(t, "/api/v1/reservations", token)
 	assertStatus(t, resp, http.StatusOK, "list reservations")
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	t.Log("✓ List reservations works")
 
 	// Step 10: Verify we can't access anything after logout
@@ -168,7 +180,7 @@ func TestFullHappyPath(t *testing.T) {
 	if logoutResp.StatusCode == http.StatusOK || logoutResp.StatusCode == http.StatusNoContent {
 		t.Log("✓ Logout successful")
 	}
-	logoutResp.Body.Close()
+	_ = logoutResp.Body.Close()
 
 	t.Log("=== Full Happy Path Completed Successfully ===")
 }
@@ -191,19 +203,23 @@ func TestMultiTenantIsolation(t *testing.T) {
 	}
 	resp := doPost(t, "/api/v1/properties", propReq, tokenA)
 	assertStatus(t, resp, http.StatusCreated, "tenant A create property")
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	// Tenant B lists properties - should see nothing from Tenant A
 	resp = doGet(t, "/api/v1/properties", tokenB)
 	assertStatus(t, resp, http.StatusOK, "tenant B list properties")
 
 	var apiResp apiResponse
-	json.NewDecoder(resp.Body).Decode(&apiResp)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	_ = resp.Body.Close()
 
 	// Verify the list is empty or only contains Tenant B's data
 	var properties []map[string]any
-	json.Unmarshal(apiResp.Data, &properties)
+	if err := json.Unmarshal(apiResp.Data, &properties); err != nil {
+		t.Fatalf("unmarshal properties: %v", err)
+	}
 
 	for _, prop := range properties {
 		name, _ := prop["name"].(string)
@@ -227,11 +243,15 @@ func assertStatus(t *testing.T, resp *http.Response, expected int, context strin
 func extractID(t *testing.T, resp *http.Response) string {
 	t.Helper()
 	var apiResp apiResponse
-	json.NewDecoder(resp.Body).Decode(&apiResp)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	_ = resp.Body.Close()
 
 	var result map[string]any
-	json.Unmarshal(apiResp.Data, &result)
+	if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+		t.Fatalf("unmarshal data: %v", err)
+	}
 
 	id, ok := result["id"].(string)
 	if !ok || id == "" {

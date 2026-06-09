@@ -81,20 +81,20 @@ func SetupTestEnv() (*TestEnv, error) {
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		pg.Stop()
+		_ = pg.Stop()
 		return nil, fmt.Errorf("connect to embedded postgres: %w", err)
 	}
 
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
-		pg.Stop()
+		_ = pg.Stop()
 		return nil, fmt.Errorf("ping embedded postgres: %w", err)
 	}
 
 	// Run migrations
 	if err := runMigrations(ctx, pool, migrationsDir); err != nil {
 		pool.Close()
-		pg.Stop()
+		_ = pg.Stop()
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func (e *TestEnv) Teardown() {
 	e.Server.Close()
 	e.DB.Close()
 	if e.Postgres != nil {
-		e.Postgres.Stop()
+		_ = e.Postgres.Stop()
 	}
 }
 
@@ -189,7 +189,7 @@ func buildServer(pool *pgxpool.Pool, jwtCfg config.JWTConfig) *httptest.Server {
 
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
