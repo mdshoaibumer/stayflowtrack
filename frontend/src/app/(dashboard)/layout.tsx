@@ -4,6 +4,7 @@ import { useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Sidebar from "@/components/layout/Sidebar";
 import TopNav from "@/components/layout/TopNav";
+import DemoDataDialog from "@/components/shared/DemoDataDialog";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -48,6 +49,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {children}
           </main>
         </div>
+
+        {/* Demo data dialog for new users */}
+        <DemoDataDialog />
       </div>
     </ProtectedRoute>
   );
