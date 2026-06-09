@@ -88,7 +88,7 @@ func TestHealthEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("health check failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -193,7 +193,7 @@ func TestRegisterTenant(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 409, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	t.Run("missing required fields", func(t *testing.T) {
@@ -208,7 +208,7 @@ func TestRegisterTenant(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 400 or 422, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	t.Run("password too short", func(t *testing.T) {
@@ -224,7 +224,7 @@ func TestRegisterTenant(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 400 or 422, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 }
 
@@ -298,7 +298,7 @@ func TestLogin(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 401, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	t.Run("nonexistent email", func(t *testing.T) {
@@ -312,7 +312,7 @@ func TestLogin(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 401, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 }
 
@@ -368,7 +368,7 @@ func TestRefreshToken(t *testing.T) {
 			b, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 401, got %d: %s", resp.StatusCode, string(b))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 }
 

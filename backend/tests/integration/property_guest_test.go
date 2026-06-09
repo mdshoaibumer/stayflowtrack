@@ -29,11 +29,15 @@ func TestPropertyManagement(t *testing.T) {
 		}
 
 		var apiResp apiResponse
-		json.NewDecoder(resp.Body).Decode(&apiResp)
-		resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		_ = resp.Body.Close()
 
 		var result map[string]any
-		json.Unmarshal(apiResp.Data, &result)
+		if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+			t.Fatalf("unmarshal data: %v", err)
+		}
 		id, ok := result["id"].(string)
 		if !ok || id == "" {
 			t.Fatal("expected property id in response")
@@ -48,7 +52,7 @@ func TestPropertyManagement(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	t.Run("get property by id", func(t *testing.T) {
@@ -60,7 +64,7 @@ func TestPropertyManagement(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	var unitTypeID string
@@ -82,11 +86,15 @@ func TestPropertyManagement(t *testing.T) {
 		}
 
 		var apiResp apiResponse
-		json.NewDecoder(resp.Body).Decode(&apiResp)
-		resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		_ = resp.Body.Close()
 
 		var result map[string]any
-		json.Unmarshal(apiResp.Data, &result)
+		if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+			t.Fatalf("unmarshal data: %v", err)
+		}
 		id, ok := result["id"].(string)
 		if !ok || id == "" {
 			t.Fatal("expected unit_type id in response")
@@ -110,7 +118,7 @@ func TestPropertyManagement(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 201, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	t.Run("list units", func(t *testing.T) {
@@ -122,7 +130,7 @@ func TestPropertyManagement(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	t.Run("unauthorized without token", func(t *testing.T) {
@@ -131,7 +139,7 @@ func TestPropertyManagement(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 401, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 }
 
@@ -158,11 +166,15 @@ func TestGuestManagement(t *testing.T) {
 		}
 
 		var apiResp apiResponse
-		json.NewDecoder(resp.Body).Decode(&apiResp)
-		resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		_ = resp.Body.Close()
 
 		var result map[string]any
-		json.Unmarshal(apiResp.Data, &result)
+		if err := json.Unmarshal(apiResp.Data, &result); err != nil {
+			t.Fatalf("unmarshal data: %v", err)
+		}
 		id, ok := result["id"].(string)
 		if !ok || id == "" {
 			t.Fatal("expected guest id in response")
@@ -177,7 +189,7 @@ func TestGuestManagement(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 
 	t.Run("get guest by id", func(t *testing.T) {
@@ -189,6 +201,6 @@ func TestGuestManagement(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 			t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 }
