@@ -45,10 +45,10 @@ func (r *Repository) GetReservationByID(ctx context.Context, id, tenantID uuid.U
 		`SELECT r.id, r.tenant_id, r.property_id, r.unit_id, r.guest_id,
 		        r.booking_source, r.status, r.check_in_date, r.check_out_date,
 		        r.actual_check_in, r.actual_check_out, r.num_guests,
-		        r.rate_per_night, r.total_amount, r.notes,
-		        r.cancellation_reason, r.cancelled_at, r.external_booking_id,
+		        r.rate_per_night, r.total_amount, COALESCE(r.notes, ''),
+		        COALESCE(r.cancellation_reason, ''), r.cancelled_at, COALESCE(r.external_booking_id, ''),
 		        r.created_at, r.updated_at,
-		        g.first_name, g.last_name, g.phone,
+		        g.first_name, g.last_name, COALESCE(g.phone, ''),
 		        u.unit_number, ut.name, p.name
 		 FROM reservations r
 		 JOIN guests g ON r.guest_id = g.id
@@ -99,10 +99,10 @@ func (r *Repository) ListReservations(ctx context.Context, params ListParams) ([
 		`SELECT r.id, r.tenant_id, r.property_id, r.unit_id, r.guest_id,
 		        r.booking_source, r.status, r.check_in_date, r.check_out_date,
 		        r.actual_check_in, r.actual_check_out, r.num_guests,
-		        r.rate_per_night, r.total_amount, r.notes,
-		        r.cancellation_reason, r.cancelled_at, r.external_booking_id,
+		        r.rate_per_night, r.total_amount, COALESCE(r.notes, ''),
+		        COALESCE(r.cancellation_reason, ''), r.cancelled_at, COALESCE(r.external_booking_id, ''),
 		        r.created_at, r.updated_at,
-		        g.first_name, g.last_name, g.phone,
+		        g.first_name, g.last_name, COALESCE(g.phone, ''),
 		        u.unit_number, ut.name
 		 FROM reservations r
 		 JOIN guests g ON r.guest_id = g.id
