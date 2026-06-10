@@ -120,19 +120,19 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">First Name *</label>
-                <input type="text" required value={form.guest_first_name} onChange={(e) => setForm({ ...form, guest_first_name: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Raj" />
+                <input type="text" required value={form.guest_first_name} onChange={(e) => setForm({ ...form, guest_first_name: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="Raj" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Last Name <span className="text-gray-400">(optional)</span></label>
-                <input type="text" value={form.guest_last_name} onChange={(e) => setForm({ ...form, guest_last_name: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Sharma" />
+                <input type="text" value={form.guest_last_name} onChange={(e) => setForm({ ...form, guest_last_name: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="Sharma" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Phone *</label>
-                <input type="tel" required value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="9876543210" />
+                <input type="tel" required value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="9876543210" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="guest@email.com" />
+                <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="guest@email.com" />
               </div>
             </div>
           </fieldset>
@@ -143,7 +143,7 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Unit / Room *</label>
-                <select required value={form.unit_id} onChange={(e) => handleUnitChange(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                <select required value={form.unit_id} onChange={(e) => handleUnitChange(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
                   <option value="">Select available unit...</option>
                   {units.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -154,15 +154,15 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Check-Out Date *</label>
-                <input type="date" required value={form.check_out_date} onChange={(e) => setForm({ ...form, check_out_date: e.target.value })} min={new Date().toISOString().split("T")[0]} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input type="date" required value={form.check_out_date} onChange={(e) => setForm({ ...form, check_out_date: e.target.value })} min={new Date().toISOString().split("T")[0]} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Rate per Night (₹) *</label>
-                <input type="number" required min={1} value={form.rate_per_night || ""} onChange={(e) => setForm({ ...form, rate_per_night: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input type="number" required min={1} value={form.rate_per_night || ""} onChange={(e) => setForm({ ...form, rate_per_night: Number(e.target.value) })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Number of Guests</label>
-                <input type="number" min={1} max={20} value={form.num_guests} onChange={(e) => setForm({ ...form, num_guests: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input type="number" min={1} max={20} value={form.num_guests} onChange={(e) => setForm({ ...form, num_guests: Number(e.target.value) })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
               </div>
             </div>
             {nights > 0 && form.rate_per_night > 0 && (
@@ -178,7 +178,7 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">ID Document Type *</label>
-                <select required value={form.id_document_type} onChange={(e) => setForm({ ...form, id_document_type: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                <select required value={form.id_document_type} onChange={(e) => setForm({ ...form, id_document_type: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
                   <option value="aadhaar">Aadhaar Card</option>
                   <option value="passport">Passport</option>
                   <option value="driving_license">Driving License</option>
@@ -188,11 +188,11 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">ID Number *</label>
-                <input type="text" required value={form.id_document_number} onChange={(e) => setForm({ ...form, id_document_number: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="XXXX XXXX XXXX" />
+                <input type="text" required value={form.id_document_number} onChange={(e) => setForm({ ...form, id_document_number: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="XXXX XXXX XXXX" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Deposit Amount (₹) <span className="text-gray-400">(0 for corporate)</span></label>
-                <input type="number" required min={0} value={form.deposit_amount} onChange={(e) => setForm({ ...form, deposit_amount: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input type="number" required min={0} value={form.deposit_amount} onChange={(e) => setForm({ ...form, deposit_amount: Number(e.target.value) })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
                 {form.rate_per_night > 0 && (
                   <p className="text-xs text-blue-600 mt-1">
                     Suggested: ₹{form.rate_per_night.toLocaleString()} (1 night).
@@ -202,7 +202,7 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Payment Method *</label>
-                <select required value={form.deposit_method} onChange={(e) => setForm({ ...form, deposit_method: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                <select required value={form.deposit_method} onChange={(e) => setForm({ ...form, deposit_method: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
                   <option value="cash">Cash</option>
                   <option value="upi">UPI</option>
                   <option value="card">Card</option>
@@ -214,7 +214,7 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
             {form.deposit_method !== "cash" && (
               <div className="mt-3">
                 <label className="block text-xs font-medium text-gray-600 mb-1">Transaction Reference</label>
-                <input type="text" value={form.deposit_reference} onChange={(e) => setForm({ ...form, deposit_reference: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="UPI ref / Card last 4 digits" />
+                <input type="text" value={form.deposit_reference} onChange={(e) => setForm({ ...form, deposit_reference: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="UPI ref / Card last 4 digits" />
               </div>
             )}
           </fieldset>
@@ -222,7 +222,7 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
           {/* Notes */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Notes (optional)</label>
-            <input type="text" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Any special requests..." />
+            <input type="text" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="Any special requests..." />
           </div>
 
           {/* Submit */}

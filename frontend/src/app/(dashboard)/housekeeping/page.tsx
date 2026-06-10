@@ -20,16 +20,19 @@ export default function HousekeepingPage() {
   };
 
   if (!propertyId) {
-    return <div className="text-gray-500 text-sm">No property configured</div>;
+    return <div className="text-muted-foreground text-sm py-8 text-center">No property configured. Please set up your property in Settings.</div>;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Housekeeping</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Housekeeping</h1>
+          <p className="page-description">Manage room cleaning tasks and inspections</p>
+        </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+          className="inline-flex items-center justify-center gap-2 h-9 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shadow-sm transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -77,62 +80,65 @@ function CreateTaskModal({ onClose, onSubmit }: { onClose: () => void; onSubmit:
   const update = (field: string, value: string | number) => setForm((f) => ({ ...f, [field]: value }));
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">New Housekeeping Task</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
+      <div className="relative bg-card rounded-xl shadow-xl max-w-md w-full max-h-[85vh] overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b flex items-center justify-between shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900">New Housekeeping Task</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-lg p-1 hover:bg-gray-100 transition-colors" aria-label="Close">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">{error}</div>}
+        <div className="px-6 py-4 overflow-y-auto flex-1">
+          {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700" role="alert">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Unit Number *</label>
-            <input type="text" required value={form.unit_number} onChange={(e) => update("unit_number", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="e.g. 101" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Task Type</label>
-              <select value={form.task_type} onChange={(e) => update("task_type", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                <option value="checkout_clean">Checkout Clean</option>
-                <option value="stay_over_clean">Stay Over Clean</option>
-                <option value="deep_clean">Deep Clean</option>
-                <option value="inspection">Inspection</option>
-                <option value="maintenance">Maintenance</option>
-              </select>
+              <label className="block text-sm font-medium text-gray-700">Unit Number *</label>
+              <input type="text" required value={form.unit_number} onChange={(e) => update("unit_number", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="e.g. 101" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Task Type</label>
+                <select value={form.task_type} onChange={(e) => update("task_type", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
+                  <option value="checkout_clean">Checkout Clean</option>
+                  <option value="stay_over_clean">Stay Over Clean</option>
+                  <option value="deep_clean">Deep Clean</option>
+                  <option value="inspection">Inspection</option>
+                  <option value="maintenance">Maintenance</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priority</label>
+                <select value={form.priority} onChange={(e) => update("priority", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
+                  <option value="urgent">Urgent</option>
+                  <option value="high">High</option>
+                  <option value="normal">Normal</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Priority</label>
-              <select value={form.priority} onChange={(e) => update("priority", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="normal">Normal</option>
-                <option value="low">Low</option>
-              </select>
+              <label className="block text-sm font-medium text-gray-700">Assign To</label>
+              <input type="text" value={form.assignee_name} onChange={(e) => update("assignee_name", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="Staff name" />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Assign To</label>
-            <input type="text" value={form.assignee_name} onChange={(e) => update("assignee_name", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Staff name" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Estimated Time (minutes)</label>
-            <input type="number" min="5" step="5" value={form.estimated_minutes} onChange={(e) => update("estimated_minutes", Number(e.target.value))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Notes</label>
-            <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={2} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Special instructions..." />
-          </div>
-          <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50">Cancel</button>
-            <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-              {loading ? "Creating..." : "Create Task"}
-            </button>
-          </div>
-        </form>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Estimated Time (minutes)</label>
+              <input type="number" min="5" step="5" value={form.estimated_minutes} onChange={(e) => update("estimated_minutes", Number(e.target.value))} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={2} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors resize-none" placeholder="Special instructions..." />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <button type="button" onClick={onClose} className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors">Cancel</button>
+              <button type="submit" disabled={loading} className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 shadow-sm transition-colors">
+                {loading ? "Creating..." : "Create Task"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

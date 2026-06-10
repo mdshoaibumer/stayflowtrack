@@ -1,9 +1,9 @@
 {
-  "name": "StayFlow Track",
+  "name": "StayFlow — Property Management",
   "short_name": "StayFlow",
-  "description": "Multi-tenant hotel property management system",
-  "start_url": "/",
+  "description": "Reservations, billing, housekeeping, and operations for service apartments and boutique hotels.",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1a1a2e"
+  "background_color": "#f5f7fa",
+  "theme_color": "#1E3A5F"
 }

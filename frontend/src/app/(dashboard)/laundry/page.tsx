@@ -8,7 +8,7 @@ import LaundryTracker from "@/components/laundry/LaundryTracker";
 
 export default function LaundryPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
+    <Suspense fallback={<div className="flex justify-center py-12"><div className="w-6 h-6 rounded-full border-[2.5px] border-muted border-t-primary animate-spin" role="status" aria-label="Loading" /></div>}>
       <LaundryContent />
     </Suspense>
   );
@@ -32,16 +32,19 @@ function LaundryContent() {
   };
 
   if (!propertyId) {
-    return <div className="text-gray-500 text-sm">No property configured</div>;
+    return <div className="text-muted-foreground text-sm py-8 text-center">No property configured. Please set up your property in Settings.</div>;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Laundry</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Laundry</h1>
+          <p className="page-description">Track and manage laundry orders</p>
+        </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+          className="inline-flex items-center justify-center gap-2 h-9 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shadow-sm transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -155,16 +158,18 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">New Laundry Order</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
+      <div className="relative bg-card rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b flex items-center justify-between shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900">New Laundry Order</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-lg p-1 hover:bg-gray-100 transition-colors" aria-label="Close">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">{error}</div>}
+        <div className="px-6 py-4 overflow-y-auto flex-1">
+          {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700" role="alert">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Order Type */}
@@ -184,8 +189,8 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
             <button
               type="button"
               onClick={() => setForm({ ...form, service_type: "regular" })}
-              className={`flex-1 py-2 px-3 text-sm rounded-md border-2 font-medium transition-colors ${
-                form.service_type === "regular" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 hover:border-gray-300"
+              className={`flex-1 py-2 px-3 text-sm rounded-lg border-2 font-medium transition-colors ${
+                form.service_type === "regular" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 hover:border-gray-300"
               }`}
             >
               Regular
@@ -194,7 +199,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
             <button
               type="button"
               onClick={() => setForm({ ...form, service_type: "express" })}
-              className={`flex-1 py-2 px-3 text-sm rounded-md border-2 font-medium transition-colors ${
+              className={`flex-1 py-2 px-3 text-sm rounded-lg border-2 font-medium transition-colors ${
                 form.service_type === "express" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-gray-200 hover:border-gray-300"
               }`}
             >
@@ -213,7 +218,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
                   placeholder="Search guest..."
                   value={guestSearch || form.guest_name}
                   onChange={(e) => { searchGuests(e.target.value); setForm({ ...form, guest_name: e.target.value }); }}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors"
                 />
                 {guestResults.length > 0 && (
                   <div className="mt-1 border rounded-md max-h-32 overflow-y-auto">
@@ -236,7 +241,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Unit Number *</label>
-                <input type="text" value={form.unit_number} onChange={(e) => setForm({ ...form, unit_number: e.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="101" />
+                <input type="text" value={form.unit_number} onChange={(e) => setForm({ ...form, unit_number: e.target.value })} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="101" />
               </div>
             </>
           )}
@@ -264,7 +269,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-700">Items</label>
-              <button type="button" onClick={addItem} className="text-xs text-blue-600 hover:underline">+ Add Item</button>
+              <button type="button" onClick={addItem} className="text-xs text-primary hover:underline">+ Add Item</button>
             </div>
             <div className="space-y-2">
               {items.map((item, idx) => (
@@ -274,7 +279,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
                     placeholder="Item name"
                     value={item.item_name}
                     onChange={(e) => updateItem(idx, "item_name", e.target.value)}
-                    className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="flex-1 rounded-lg border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors"
                   />
                   <input
                     type="number"
@@ -289,7 +294,7 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
                     min="0"
                     value={item.rate}
                     onChange={(e) => updateItem(idx, "rate", Number(e.target.value))}
-                    className="w-20 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-20 rounded-lg border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors"
                     placeholder="₹ Rate"
                   />
                   {items.length > 1 && (
@@ -310,16 +315,17 @@ function CreateLaundryOrderModal({ onClose, onSubmit }: { onClose: () => void; o
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Notes</label>
-            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Special instructions..." />
+            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="Special instructions..." />
           </div>
 
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50">Cancel</button>
-            <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+            <button type="button" onClick={onClose} className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors">Cancel</button>
+            <button type="submit" disabled={loading} className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 shadow-sm transition-colors">
               {loading ? "Creating..." : "Create Order"}
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

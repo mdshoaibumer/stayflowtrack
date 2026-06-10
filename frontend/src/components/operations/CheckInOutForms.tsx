@@ -350,7 +350,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
                 {Number(summary.balance) + lateCharge * 1.18 < summary.deposit_held && (
                   <div className="mt-2">
                     <label className="block text-xs text-gray-600 mb-1">Refund Method:</label>
-                    <select className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <select className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
                       <option value="cash">Cash</option>
                       <option value="upi">UPI (to original account)</option>
                       <option value="bank_transfer">Bank Transfer</option>
@@ -427,11 +427,11 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-600">Amount (₹)</label>
-                  <input type="number" min={0} value={paymentAmount || ""} onChange={(e) => setPaymentAmount(Number(e.target.value))} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                  <input type="number" min={0} value={paymentAmount || ""} onChange={(e) => setPaymentAmount(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Method</label>
-                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
                     <option value="cash">Cash</option>
                     <option value="upi">UPI</option>
                     <option value="card">Card</option>
@@ -442,7 +442,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
               {paymentMethod !== "cash" && (
                 <div>
                   <label className="block text-xs text-gray-600">Reference / Transaction ID</label>
-                  <input type="text" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="UPI ref / Card last 4" />
+                  <input type="text" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="UPI ref / Card last 4" />
                 </div>
               )}
               <div className="flex gap-2 justify-end">

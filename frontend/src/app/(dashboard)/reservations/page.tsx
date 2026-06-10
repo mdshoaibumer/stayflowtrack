@@ -35,11 +35,11 @@ interface GuestOption {
 }
 
 const statusColors: Record<string, string> = {
-  confirmed: "bg-blue-100 text-blue-700",
-  checked_in: "bg-green-100 text-green-700",
-  checked_out: "bg-gray-100 text-gray-700",
-  cancelled: "bg-red-100 text-red-700",
-  pending: "bg-yellow-100 text-yellow-700",
+  confirmed: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20",
+  checked_in: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
+  checked_out: "bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-500/20",
+  cancelled: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20",
+  pending: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20",
 };
 
 export default function ReservationsPage() {
@@ -91,29 +91,29 @@ function ReservationsContent() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Reservations</h1>
+        <h1 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">Reservations</h1>
         <div className="flex items-center gap-2">
           {/* View Toggle */}
-          <div className="flex border rounded-md overflow-hidden">
+          <div className="flex border rounded-lg overflow-hidden">
             <button
               onClick={() => setView("calendar")}
-              className={`px-3 py-1.5 text-xs font-medium ${view === "calendar" ? "bg-blue-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${view === "calendar" ? "bg-primary text-primary-foreground" : "bg-white text-gray-600 hover:bg-gray-50"}`}
             >
               Calendar
             </button>
             <button
               onClick={() => setView("list")}
-              className={`px-3 py-1.5 text-xs font-medium ${view === "list" ? "bg-blue-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${view === "list" ? "bg-primary text-primary-foreground" : "bg-white text-gray-600 hover:bg-gray-50"}`}
             >
               List
             </button>
           </div>
           <button
             onClick={() => setShowNewBooking(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shadow-sm transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

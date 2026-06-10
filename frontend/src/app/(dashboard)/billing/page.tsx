@@ -54,10 +54,10 @@ interface ActiveFolio {
 }
 
 const statusColors: Record<string, string> = {
-  open: "bg-blue-100 text-blue-700",
-  settled: "bg-green-100 text-green-700",
-  partial: "bg-yellow-100 text-yellow-700",
-  overdue: "bg-red-100 text-red-700",
+  open: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20",
+  settled: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
+  partial: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20",
+  overdue: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20",
 };
 
 export default function BillingPage() {
@@ -105,12 +105,12 @@ export default function BillingPage() {
   }, [fetchData]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 max-w-[1600px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Billing</h1>
+        <h1 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">Billing</h1>
         <button
           onClick={() => setShowQuickCharge(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shadow-sm transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           Quick Charge
@@ -119,17 +119,17 @@ export default function BillingPage() {
 
       {/* Tabs: Active Folios vs Invoices */}
       <div className="flex gap-1 border-b">
-        <button onClick={() => setTab("active")} className={`px-4 py-2 text-sm font-medium border-b-2 ${tab === "active" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+        <button onClick={() => setTab("active")} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === "active" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}`}>
           Current Bills
-          {activeFolios.length > 0 && <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">{activeFolios.length}</span>}
+          {activeFolios.length > 0 && <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">{activeFolios.length}</span>}
         </button>
-        <button onClick={() => setTab("invoices")} className={`px-4 py-2 text-sm font-medium border-b-2 ${tab === "invoices" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+        <button onClick={() => setTab("invoices")} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === "invoices" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"}`}>
           Past Bills
         </button>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700" role="alert">
           {error}
           <button onClick={fetchData} className="ml-2 underline">Retry</button>
         </div>

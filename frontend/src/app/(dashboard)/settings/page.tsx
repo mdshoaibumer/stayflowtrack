@@ -18,11 +18,11 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Settings</h1>
+    <div className="page-container">
+      <h1 className="page-title">Settings</h1>
 
       {successMsg && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700">{successMsg}</div>
+        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-700" role="alert">{successMsg}</div>
       )}
 
       {/* Tabs */}
@@ -32,7 +32,7 @@ export default function SettingsPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-              tab === t.id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+              tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
             }`}
           >
             {t.label}
@@ -89,48 +89,48 @@ function PropertySettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
   const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-4 bg-white border rounded-lg p-6">
+    <form onSubmit={handleSubmit} className="max-w-lg space-y-4 rounded-xl border bg-card p-6">
       <h3 className="font-medium text-gray-900">Property Information</h3>
-      {error && <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">{error}</div>}
+      {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
       <div>
         <label className="block text-sm font-medium text-gray-700">Property Name</label>
-        <input type="text" value={form.name} onChange={(e) => update("name", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        <input type="text" value={form.name} onChange={(e) => update("name", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Address</label>
-        <textarea value={form.address} onChange={(e) => update("address", e.target.value)} rows={2} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        <textarea value={form.address} onChange={(e) => update("address", e.target.value)} rows={2} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">City</label>
-          <input type="text" value={form.city} onChange={(e) => update("city", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          <input type="text" value={form.city} onChange={(e) => update("city", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">State</label>
-          <input type="text" value={form.state} onChange={(e) => update("state", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          <input type="text" value={form.state} onChange={(e) => update("state", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Pincode</label>
-          <input type="text" value={form.pincode} onChange={(e) => update("pincode", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          <input type="text" value={form.pincode} onChange={(e) => update("pincode", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">GSTIN</label>
-          <input type="text" value={form.gstin} onChange={(e) => update("gstin", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="22AAAAA0000A1Z5" />
+          <input type="text" value={form.gstin} onChange={(e) => update("gstin", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="22AAAAA0000A1Z5" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Phone</label>
-          <input type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          <input type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Email</label>
-          <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
         </div>
       </div>
-      <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+      <button type="submit" disabled={loading} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 shadow-sm transition-colors">
         {loading ? "Saving..." : "Save Changes"}
       </button>
     </form>
@@ -141,7 +141,7 @@ function ProfileSettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
   const { user } = useAuth();
 
   return (
-    <div className="max-w-lg bg-white border rounded-lg p-6 space-y-4">
+    <div className="max-w-lg rounded-xl border bg-card p-6 space-y-4">
       <h3 className="font-medium text-gray-900">Profile</h3>
       <div className="space-y-3">
         <div className="flex justify-between text-sm">
@@ -188,22 +188,22 @@ function PasswordSettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg bg-white border rounded-lg p-6 space-y-4">
+    <form onSubmit={handleSubmit} className="max-w-lg rounded-xl border bg-card p-6 space-y-4">
       <h3 className="font-medium text-gray-900">Change Password</h3>
-      {error && <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">{error}</div>}
+      {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
       <div>
         <label className="block text-sm font-medium text-gray-700">Current Password</label>
-        <input type="password" required value={form.current_password} onChange={(e) => setForm({ ...form, current_password: e.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        <input type="password" required value={form.current_password} onChange={(e) => setForm({ ...form, current_password: e.target.value })} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">New Password</label>
-        <input type="password" required value={form.new_password} onChange={(e) => setForm({ ...form, new_password: e.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Min 8 characters" />
+        <input type="password" required value={form.new_password} onChange={(e) => setForm({ ...form, new_password: e.target.value })} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="Min 8 characters" />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
-        <input type="password" required value={form.confirm_password} onChange={(e) => setForm({ ...form, confirm_password: e.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        <input type="password" required value={form.confirm_password} onChange={(e) => setForm({ ...form, confirm_password: e.target.value })} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" />
       </div>
-      <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+      <button type="submit" disabled={loading} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 shadow-sm transition-colors">
         {loading ? "Changing..." : "Change Password"}
       </button>
     </form>
@@ -240,7 +240,7 @@ function TeamSettings() {
   };
 
   return (
-    <div className="max-w-lg bg-white border rounded-lg p-6 space-y-4">
+    <div className="max-w-lg rounded-xl border bg-card p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-medium text-gray-900">Team Members</h3>
         <button onClick={() => setShowInvite(true)} className="text-sm text-blue-600 hover:underline">+ Invite</button>
