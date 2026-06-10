@@ -48,9 +48,9 @@ func (r *Repository) GetRevenue(ctx context.Context, tenantID, propertyID uuid.U
 
 	err := r.pool.QueryRow(ctx,
 		`SELECT
-			COALESCE(SUM(CASE WHEN created_at >= $3 THEN amount ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN created_at >= $4 THEN amount ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN created_at >= $5 THEN amount ELSE 0 END), 0)
+			COALESCE(SUM(CASE WHEN p.created_at >= $3 THEN p.amount ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN p.created_at >= $4 THEN p.amount ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN p.created_at >= $5 THEN p.amount ELSE 0 END), 0)
 		 FROM payments p
 		 JOIN folios f ON p.folio_id = f.id
 		 WHERE f.tenant_id = $1 AND f.property_id = $2

@@ -164,16 +164,13 @@ func main() {
 	authMw := authmiddleware.New(authSvc, log)
 
 	// Rate limiters
-	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)     // 5 req/min for auth
-	globalLimiter := middleware.NewRateLimiter(100, 1*time.Minute) // 100 req/min global
+	authLimiter := middleware.NewRateLimiter(50, 1*time.Minute)      // 50 req/min for auth
+	globalLimiter := middleware.NewRateLimiter(1000, 1*time.Minute) // 1000 req/min global
 
 	// Router
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
-	r.Use(globalLimiter.Limit)
-	r.Use(middleware.MetricsMiddleware)
-	r.Use(middleware.MaxBodySize(1 << 20)) // 1MB global limit
 	r.Use(middleware.RequestLogger(log))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
@@ -184,6 +181,9 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+	r.Use(globalLimiter.Limit)
+	r.Use(middleware.MetricsMiddleware)
+	r.Use(middleware.MaxBodySize(1 << 20)) // 1MB global limit
 
 	// Health checks
 	healthHandler := middleware.NewHealthHandler(func() error {

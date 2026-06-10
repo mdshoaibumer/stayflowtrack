@@ -269,6 +269,8 @@ func (r *Repository) ListPayments(ctx context.Context, folioID, tenantID uuid.UU
 // GetInvoiceByID returns a full invoice with line items.
 func (r *Repository) GetInvoiceByID(ctx context.Context, invoiceID, tenantID uuid.UUID) (*domain.Invoice, error) {
 	var inv domain.Invoice
+	var guestEmail, guestPhone, guestAddress, propGST, notes, pdfKey *string
+	var dueDate *time.Time
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, tenant_id, folio_id, reservation_id, guest_id, property_id,
 		        invoice_number, status, guest_name, guest_email, guest_phone, guest_address,
@@ -279,11 +281,19 @@ func (r *Repository) GetInvoiceByID(ctx context.Context, invoiceID, tenantID uui
 		 FROM invoices WHERE id = $1 AND tenant_id = $2`,
 		invoiceID, tenantID,
 	).Scan(&inv.ID, &inv.TenantID, &inv.FolioID, &inv.ReservationID, &inv.GuestID, &inv.PropertyID,
-		&inv.InvoiceNumber, &inv.Status, &inv.GuestName, &inv.GuestEmail, &inv.GuestPhone, &inv.GuestAddress,
-		&inv.PropertyName, &inv.PropertyAddress, &inv.PropertyGST,
+		&inv.InvoiceNumber, &inv.Status, &inv.GuestName, &guestEmail, &guestPhone, &guestAddress,
+		&inv.PropertyName, &inv.PropertyAddress, &propGST,
 		&inv.Subtotal, &inv.CGSTAmount, &inv.SGSTAmount, &inv.IGSTAmount, &inv.TotalTax, &inv.TotalAmount,
 		&inv.PaidAmount, &inv.BalanceDue, &inv.CheckInDate, &inv.CheckOutDate, &inv.NumNights,
-		&inv.IssuedAt, &inv.DueDate, &inv.Notes, &inv.PDFKey, &inv.CreatedAt)
+		&inv.IssuedAt, &dueDate, &notes, &pdfKey, &inv.CreatedAt)
+
+	if guestEmail != nil { inv.GuestEmail = *guestEmail }
+	if guestPhone != nil { inv.GuestPhone = *guestPhone }
+	if guestAddress != nil { inv.GuestAddress = *guestAddress }
+	if propGST != nil { inv.PropertyGST = *propGST }
+	if notes != nil { inv.Notes = *notes }
+	if pdfKey != nil { inv.PDFKey = *pdfKey }
+	inv.DueDate = dueDate
 
 	if err == pgx.ErrNoRows {
 		return nil, apperrors.NotFound("invoice", invoiceID.String())
@@ -355,14 +365,23 @@ func (r *Repository) ListInvoices(ctx context.Context, tenantID uuid.UUID, prope
 	var invoices []domain.Invoice
 	for rows.Next() {
 		var inv domain.Invoice
+		var guestEmail, guestPhone, guestAddress, propGST, notes, pdfKey *string
+		var dueDate *time.Time
 		if err := rows.Scan(&inv.ID, &inv.TenantID, &inv.FolioID, &inv.ReservationID, &inv.GuestID, &inv.PropertyID,
-			&inv.InvoiceNumber, &inv.Status, &inv.GuestName, &inv.GuestEmail, &inv.GuestPhone, &inv.GuestAddress,
-			&inv.PropertyName, &inv.PropertyAddress, &inv.PropertyGST,
+			&inv.InvoiceNumber, &inv.Status, &inv.GuestName, &guestEmail, &guestPhone, &guestAddress,
+			&inv.PropertyName, &inv.PropertyAddress, &propGST,
 			&inv.Subtotal, &inv.CGSTAmount, &inv.SGSTAmount, &inv.IGSTAmount, &inv.TotalTax, &inv.TotalAmount,
 			&inv.PaidAmount, &inv.BalanceDue, &inv.CheckInDate, &inv.CheckOutDate, &inv.NumNights,
-			&inv.IssuedAt, &inv.DueDate, &inv.Notes, &inv.PDFKey, &inv.CreatedAt); err != nil {
+			&inv.IssuedAt, &dueDate, &notes, &pdfKey, &inv.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scan invoice: %w", err)
 		}
+		if guestEmail != nil { inv.GuestEmail = *guestEmail }
+		if guestPhone != nil { inv.GuestPhone = *guestPhone }
+		if guestAddress != nil { inv.GuestAddress = *guestAddress }
+		if propGST != nil { inv.PropertyGST = *propGST }
+		if notes != nil { inv.Notes = *notes }
+		if pdfKey != nil { inv.PDFKey = *pdfKey }
+		inv.DueDate = dueDate
 		invoices = append(invoices, inv)
 	}
 	if invoices == nil {
