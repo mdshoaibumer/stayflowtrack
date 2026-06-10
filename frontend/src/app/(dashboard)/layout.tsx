@@ -5,6 +5,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Sidebar from "@/components/layout/Sidebar";
 import TopNav from "@/components/layout/TopNav";
 import DemoDataDialog from "@/components/shared/DemoDataDialog";
+import CommandPalette from "@/components/shared/CommandPalette";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -45,13 +46,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           <TopNav onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth">
+          <main id="main-content" className="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth">
             {children}
           </main>
         </div>
 
         {/* Demo data dialog for new users */}
         <DemoDataDialog />
+        <CommandPalette />
       </div>
     </ProtectedRoute>
   );

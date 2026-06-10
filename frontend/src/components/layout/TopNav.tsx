@@ -98,11 +98,11 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-4 lg:px-6">
+    <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 lg:px-6">
       {/* Mobile menu button */}
       <button
         onClick={onMenuToggle}
-        className="lg:hidden text-gray-600 hover:text-gray-900"
+        className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
         aria-label="Toggle menu"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,49 +112,64 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
 
       {/* Page context - shows property name on desktop */}
       <div className="hidden lg:block">
-        <p className="text-sm text-gray-500">Property Management</p>
+        <p className="text-sm text-muted-foreground">Property Management</p>
       </div>
 
       {/* Right side */}
       <div className="flex items-center gap-3">
+        {/* Command palette trigger */}
+        <button
+          onClick={() => {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
+          }}
+          className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground bg-muted/50 border rounded-lg hover:bg-muted transition-colors"
+          aria-label="Open command palette"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span>Search...</span>
+          <kbd className="ml-1 px-1 py-0.5 text-[10px] font-medium bg-background border rounded">⌘K</kbd>
+        </button>
+
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setShowNotifs(!showNotifs)}
-            className="relative text-gray-400 hover:text-gray-600"
+            className="relative text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Notifications"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+            <div className="absolute right-0 mt-2 w-80 bg-card border rounded-xl shadow-lg z-50 overflow-hidden animate-scale-in">
+              <div className="px-4 py-3 border-b">
+                <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
               </div>
               <div className="max-h-80 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-gray-400">
+                  <div className="px-4 py-6 text-center text-sm text-muted-foreground">
                     All clear! No notifications.
                   </div>
                 ) : (
                   notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`px-4 py-3 border-b border-gray-50 last:border-0 ${!n.read ? "bg-blue-50/50" : ""}`}
+                      className={`px-4 py-3 border-b last:border-0 ${!n.read ? "bg-primary/5" : ""}`}
                     >
                       <div className="flex items-start gap-2">
-                        <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.type === "warning" ? "bg-red-500" : "bg-blue-500"}`} />
+                        <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.type === "warning" ? "bg-destructive" : "bg-primary"}`} aria-hidden="true" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-700">{n.message}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{n.time}</p>
+                          <p className="text-sm text-foreground">{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{n.time}</p>
                         </div>
                       </div>
                     </div>
@@ -162,10 +177,10 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
                 )}
               </div>
               {notifications.length > 0 && (
-                <div className="px-4 py-2 border-t border-gray-100">
+                <div className="px-4 py-2 border-t">
                   <button
                     onClick={() => { setNotifications(notifications.map((n) => ({ ...n, read: true }))); }}
-                    className="text-xs text-blue-600 hover:underline"
+                    className="text-xs text-primary hover:underline"
                   >
                     Mark all as read
                   </button>
@@ -179,28 +194,30 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="flex items-center gap-2 text-sm hover:bg-gray-50 rounded-md px-2 py-1"
+            className="flex items-center gap-2 text-sm hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+            aria-label="User menu"
+            aria-expanded={showMenu}
           >
-            <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-700">
+            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
               {user?.full_name?.charAt(0)?.toUpperCase() || "U"}
             </div>
-            <span className="hidden sm:block text-gray-700 font-medium max-w-[120px] truncate">
+            <span className="hidden sm:block text-foreground font-medium max-w-[120px] truncate">
               {user?.full_name}
             </span>
-            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-              <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">{user?.full_name}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
+            <div className="absolute right-0 mt-2 w-48 bg-card border rounded-xl shadow-lg py-1 z-50 overflow-hidden animate-scale-in">
+              <div className="px-4 py-2 border-b">
+                <p className="text-sm font-medium text-foreground">{user?.full_name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <a
                 href="/settings"
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="block px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setShowMenu(false)}
               >
                 Settings
@@ -210,7 +227,7 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
                   setShowMenu(false);
                   logout();
                 }}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
               >
                 Sign Out
               </button>
