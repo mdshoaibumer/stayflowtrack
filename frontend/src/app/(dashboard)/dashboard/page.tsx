@@ -4,13 +4,13 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RoomBoard } from "@/components/dashboard/RoomBoard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { DashboardAlerts } from "@/components/dashboard/DashboardAlerts";
 import { OperationsSummary } from "@/components/dashboard/OperationsSummary";
 import { MorningBrief } from "@/components/dashboard/MorningBrief";
+import { OnboardingChecklist } from "@/components/shared/OnboardingChecklist";
 
 interface DashboardMetrics {
   date: string;
@@ -115,10 +115,8 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full border-[3px] border-gray-200 border-t-teal-600 animate-spin" />
-          </div>
-          <p className="text-sm text-gray-400 font-medium">Loading dashboard...</p>
+          <div className="w-10 h-10 rounded-full border-[3px] border-muted border-t-accent animate-spin" role="status" aria-label="Loading dashboard" />
+          <p className="text-sm text-muted-foreground font-medium">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -126,50 +124,45 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="p-6 bg-red-50 border border-red-200 rounded-xl text-center"
-      >
-        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center">
-          <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="p-6 bg-destructive/5 border border-destructive/20 rounded-xl text-center animate-fade-in">
+        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-destructive/10 flex items-center justify-center">
+          <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <p className="text-red-800 font-medium mb-1">Failed to load dashboard</p>
-        <p className="text-red-600 text-sm mb-3">{error}</p>
+        <p className="text-foreground font-medium mb-1">Failed to load dashboard</p>
+        <p className="text-muted-foreground text-sm mb-3">{error}</p>
         <button
           onClick={fetchDashboard}
-          className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+          className="px-4 py-2 bg-destructive text-destructive-foreground text-sm font-medium rounded-lg hover:bg-destructive/90 transition-colors focus-ring"
         >
           Try Again
         </button>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-5 max-w-[1600px] mx-auto">
+    <div className="page-container">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-      >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in">
         <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-          <p className="text-sm text-gray-400">
+          <h1 className="page-title">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
             {metrics?.date || new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-subtle" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-subtle" aria-hidden="true" />
             Live
           </span>
-          <span className="text-xs text-gray-400">Auto-refreshes every 30s</span>
+          <span className="text-xs text-muted-foreground">Auto-refreshes every 30s</span>
         </div>
-      </motion.div>
+      </div>
+
+      {/* Onboarding Checklist */}
+      <OnboardingChecklist />
 
       {/* Morning Brief */}
       {metrics && <MorningBrief metrics={metrics} />}
@@ -246,13 +239,8 @@ export default function DashboardPage() {
 
       {/* Quick Reports */}
       {metrics && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-        >
-          <Link href="/reports" className="group block rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+          <Link href="/reports" className="group block rounded-xl border bg-card p-4 shadow-sm hover:shadow-md hover:border-border transition-all duration-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
@@ -261,16 +249,16 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">Daily Collection</h4>
-                  <p className="text-xs text-gray-500">Cash / UPI / Card breakdown</p>
+                  <h4 className="text-sm font-semibold text-foreground">Daily Collection</h4>
+                  <p className="text-xs text-muted-foreground">Cash / UPI / Card breakdown</p>
                 </div>
               </div>
-              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </div>
           </Link>
-          <Link href="/reports?type=outstanding" className="group block rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200">
+          <Link href="/reports?type=outstanding" className="group block rounded-xl border bg-card p-4 shadow-sm hover:shadow-md hover:border-border transition-all duration-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
@@ -279,16 +267,16 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">Outstanding Dues</h4>
-                  <p className="text-xs text-gray-500">Guests with pending balance</p>
+                  <h4 className="text-sm font-semibold text-foreground">Outstanding Dues</h4>
+                  <p className="text-xs text-muted-foreground">Guests with pending balance</p>
                 </div>
               </div>
-              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </div>
           </Link>
-        </motion.div>
+        </div>
       )}
 
       {/* Operations Summary */}
