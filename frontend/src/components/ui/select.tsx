@@ -49,15 +49,23 @@ const SelectContext = React.createContext<SelectContextValue>({
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ className, children, ...props }, ref) => {
-    const { setOpen } = React.useContext(SelectContext);
+    const { open, setOpen } = React.useContext(SelectContext);
     return (
       <button
         ref={ref}
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        aria-haspopup="listbox"
         className={cn(
           'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); }
+          if (e.key === 'Escape') setOpen(false);
+        }}
         {...props}
       >
         {children}
@@ -74,12 +82,25 @@ function SelectValue({ placeholder }: { placeholder?: string }) {
 
 function SelectContent({ children, className }: { children: React.ReactNode; className?: string }) {
   const { open, setOpen } = React.useContext(SelectContext);
+  const listRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, setOpen]);
+
   if (!open) return null;
 
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
       <div
+        ref={listRef}
+        role="listbox"
         className={cn(
           'absolute z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md',
           className
@@ -95,12 +116,16 @@ function SelectItem({ value, children, className }: { value: string; children: R
   const { handleSelect, selected } = React.useContext(SelectContext);
   return (
     <div
+      role="option"
+      aria-selected={selected === value}
+      tabIndex={0}
       className={cn(
-        'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+        'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
         selected === value && 'bg-accent',
         className
       )}
       onClick={() => handleSelect(value)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelect(value); } }}
     >
       {children}
     </div>
