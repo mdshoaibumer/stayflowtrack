@@ -39,6 +39,8 @@ test.describe("Operations", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
+
+  test("should navigate to operations page", async ({ page }) => {
     await loginAndGo(page, "/operations");
     await expect(page).toHaveURL(/operations/);
   });
@@ -94,7 +96,7 @@ test.describe("Operations", () => {
     blockEnd.setDate(blockEnd.getDate() + 3);
 
     const resp = await request.post(
-      `${TEST_CONFIG.API_URL}/api/v1/operations/maintenance-blocks`,
+      `${TEST_CONFIG.API_URL}/api/v1/operations/maintenance-block`,
       {
         headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         data: {
@@ -103,6 +105,7 @@ test.describe("Operations", () => {
           start_date: nextWeek.toISOString().split("T")[0],
           end_date: blockEnd.toISOString().split("T")[0],
           reason: "maintenance",
+          block_type: "maintenance",
           notes: "E2E test - plumbing repair",
         },
       }
@@ -136,7 +139,7 @@ test.describe("Operations", () => {
         headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         data: {
           reservation_id: res.data.id,
-          unit_id: demoData.unit1.id,
+          assigned_unit_id: demoData.unit1.id,
           deposit_amount: 1000,
           deposit_method: "cash",
           id_document_type: "passport",

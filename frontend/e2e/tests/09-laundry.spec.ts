@@ -46,16 +46,14 @@ test.describe("Laundry", () => {
   });
 
   test("should create a rate card via API", async ({ request }) => {
-    const resp = await request.post(`${TEST_CONFIG.API_URL}/api/v1/laundry/rate-cards`, {
+    const resp = await request.post(`${TEST_CONFIG.API_URL}/api/v1/laundry/rate-card`, {
       headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
       data: {
         property_id: demoData.property.id,
         item_name: "Shirt",
-        item_type: "clothing",
-        wash_price: 50,
-        iron_price: 30,
-        wash_iron_price: 70,
-        dry_clean_price: 150,
+        item_type: "shirt",
+        service_type: "wash_iron",
+        default_rate: 70,
       },
     });
     expect([200, 201, 409].includes(resp.status())).toBeTruthy();
@@ -99,11 +97,11 @@ test.describe("Laundry", () => {
     if (createResp.ok()) {
       const order = (await createResp.json()).data;
       if (order?.id) {
-        const updateResp = await request.patch(
-          `${TEST_CONFIG.API_URL}/api/v1/laundry/orders/${order.id}/status`,
+        const updateResp = await request.post(
+          `${TEST_CONFIG.API_URL}/api/v1/laundry/orders/status`,
           {
             headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
-            data: { status: "in_progress" },
+            data: { order_id: order.id, status: "washing" },
           }
         );
         expect([200, 204].includes(updateResp.status())).toBeTruthy();

@@ -146,8 +146,7 @@ export async function loadDemoData(token: string): Promise<DemoDataResult> {
         check_out_date: checkOut.toISOString().split("T")[0],
         rate_per_night: DEMO_UNIT_TYPES[0].base_rate,
         booking_source: "walk_in",
-        adults: 2,
-        children: 0,
+        num_guests: 2,
         notes: "Demo reservation",
       }),
     });

@@ -39,6 +39,8 @@ test.describe("Housekeeping", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
+
+  test("should navigate to housekeeping page", async ({ page }) => {
     await loginAndGo(page, "/housekeeping");
     await expect(page).toHaveURL(/housekeeping/);
     await expect(page.locator("body")).toBeVisible();
@@ -50,7 +52,7 @@ test.describe("Housekeeping", () => {
       data: {
         property_id: demoData.property.id,
         unit_id: demoData.unit1.id,
-        task_type: "cleaning",
+        task_type: "stay_clean",
         priority: "high",
         notes: "E2E test: Deep cleaning after checkout",
       },
@@ -74,7 +76,7 @@ test.describe("Housekeeping", () => {
       data: {
         property_id: demoData.property.id,
         unit_id: demoData.unit1.id,
-        task_type: "inspection",
+        task_type: "stay_clean",
         priority: "medium",
         notes: "Routine inspection",
       },
@@ -88,7 +90,7 @@ test.describe("Housekeeping", () => {
           `${TEST_CONFIG.API_URL}/api/v1/housekeeping/tasks/${task.id}/status`,
           {
             headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
-            data: { status: "in_progress" },
+            data: { status: "cleaning" },
           }
         );
         expect([200, 204].includes(updateResp.status())).toBeTruthy();

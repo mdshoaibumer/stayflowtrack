@@ -111,8 +111,7 @@ test.describe.serial("Full Happy Path - End to End", () => {
         check_out_date: checkout.toISOString().split("T")[0],
         rate_per_night: 3000,
         booking_source: "walk_in",
-        adults: 2,
-        children: 0,
+        num_guests: 2,
       },
     });
     expect(resp.status()).toBe(201);
@@ -133,7 +132,7 @@ test.describe.serial("Full Happy Path - End to End", () => {
       headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
       data: {
         reservation_id: reservationId,
-        unit_id: unitId,
+        assigned_unit_id: unitId,
         deposit_amount: 3000,
         deposit_method: "card",
         id_document_type: "aadhaar",

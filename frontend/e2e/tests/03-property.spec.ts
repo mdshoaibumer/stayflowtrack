@@ -70,6 +70,7 @@ test.describe("Property Management", () => {
     // Create property and units via API
     const propResult = await createProperty(authToken, {
       name: "Unit Test Hotel",
+      address: "123 Main St",
       city: "Delhi",
       state: "Delhi",
       country: "India",

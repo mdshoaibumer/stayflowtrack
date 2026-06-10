@@ -56,6 +56,8 @@ test.describe("Check-in / Check-out Flow", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
+
+  test("should perform check-in via API", async ({ request }) => {
     // Confirm reservation first
     const confirmResp = await request.post(
       `${TEST_CONFIG.API_URL}/api/v1/reservations/${reservationId}/confirm`,
@@ -73,7 +75,7 @@ test.describe("Check-in / Check-out Flow", () => {
         headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         data: {
           reservation_id: reservationId,
-          unit_id: demoData.unit1.id,
+          assigned_unit_id: demoData.unit1.id,
           deposit_amount: 2000,
           deposit_method: "cash",
           id_document_type: "aadhaar",

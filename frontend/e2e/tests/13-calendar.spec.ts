@@ -42,8 +42,13 @@ test.describe("Calendar & Availability", () => {
   });
 
   test("should get occupancy stats via API", async ({ request }) => {
+    const today = new Date().toISOString().split("T")[0];
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const end = nextWeek.toISOString().split("T")[0];
+
     const resp = await request.get(
-      `${TEST_CONFIG.API_URL}/api/v1/calendar/${demoResult.property.id}/occupancy`,
+      `${TEST_CONFIG.API_URL}/api/v1/calendar/${demoResult.property.id}/occupancy?start_date=${today}&end_date=${end}`,
       { headers: { Authorization: `Bearer ${authToken}` } }
     );
     expect([200, 404].includes(resp.status())).toBeTruthy();
@@ -51,12 +56,12 @@ test.describe("Calendar & Availability", () => {
 
   test("should check availability via API", async ({ request }) => {
     const nextMonth = new Date();
-    nextMonth.setDate(nextMonth.getDate() + 30);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
     const nextMonthEnd = new Date(nextMonth);
     nextMonthEnd.setDate(nextMonthEnd.getDate() + 3);
 
     const resp = await request.get(
-      `${TEST_CONFIG.API_URL}/api/v1/reservations/availability?property_id=${demoResult.property.id}&check_in_date=${nextMonth.toISOString().split("T")[0]}&check_out_date=${nextMonthEnd.toISOString().split("T")[0]}`,
+      `${TEST_CONFIG.API_URL}/api/v1/reservations/availability?property_id=${demoResult.property.id}&check_in=${nextMonth.toISOString().split("T")[0]}&check_out=${nextMonthEnd.toISOString().split("T")[0]}`,
       { headers: { Authorization: `Bearer ${authToken}` } }
     );
     expect([200, 404].includes(resp.status())).toBeTruthy();
@@ -69,7 +74,7 @@ test.describe("Calendar & Availability", () => {
     const blockEnd = new Date(blockStart);
     blockEnd.setDate(blockEnd.getDate() + 5);
 
-    await request.post(`${TEST_CONFIG.API_URL}/api/v1/operations/maintenance-blocks`, {
+    await request.post(`${TEST_CONFIG.API_URL}/api/v1/operations/maintenance-block`, {
       headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
       data: {
         property_id: demoResult.property.id,
@@ -77,6 +82,7 @@ test.describe("Calendar & Availability", () => {
         start_date: blockStart.toISOString().split("T")[0],
         end_date: blockEnd.toISOString().split("T")[0],
         reason: "renovation",
+        block_type: "renovation",
         notes: "Calendar test block",
       },
     });

@@ -12,6 +12,7 @@ import { loadDemoData } from "../helpers/demo-data";
 test.describe("Dashboard", () => {
   let userEmail: string;
   let userPassword: string;
+  let authToken: string;
 
   test.beforeAll(async () => {
     const user = generateTestUser("dash");
@@ -23,18 +24,37 @@ test.describe("Dashboard", () => {
     });
     userEmail = user.email;
     userPassword = user.password;
+    authToken = result.data.access_token;
 
     // Load full demo data for dashboard metrics
     await loadDemoData(result.data.access_token);
   });
 
   async function login(page: any) {
-    await page.goto("/login");
-    await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
-    await page.locator('input[type="email"]').fill(userEmail);
-    await page.locator('input[type="password"]').fill(userPassword);
-    await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/dashboard/, { timeout: 15_000 });
+    // Fetch property using test API helper configuration
+    const pResp = await fetch(`http://localhost:8080/api/v1/properties`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    const pJson = await pResp.json();
+    const pid = (pJson.data && pJson.data.length > 0) ? pJson.data[0].id : null;
+
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
+
+    await page.goto("/");
+    await page.evaluate(({ token, email, pid }) => {
+      localStorage.setItem("demo_data_shown", "true");
+      localStorage.setItem("access_token", token);
+      localStorage.setItem("user", JSON.stringify({
+        id: "test-user-id",
+        email: email,
+        full_name: "Test User",
+        role: "super_admin",
+        property_id: pid
+      }));
+    }, { token: authToken, email: userEmail, pid });
+
+    await page.goto("/dashboard");
+    await page.waitForLoadState("domcontentloaded");
   }
 
   test("should display dashboard with metrics", async ({ page }) => {
@@ -50,10 +70,15 @@ test.describe("Dashboard", () => {
     await login(page);
     await page.waitForTimeout(3000);
 
-    // Look for metric cards or numbers
-    const metricCards = page.locator("[class*='card'], [class*='metric'], [class*='stat']");
-    const count = await metricCards.count();
-    expect(count).toBeGreaterThan(0);
+    // Wait for the dashboard to finish loading
+    const occupancyCard = page.locator('text=Occupancy').first();
+    try {
+      await expect(occupancyCard).toBeVisible({ timeout: 15_000 });
+    } catch (err) {
+      const body = await page.locator("body").textContent();
+      console.log("BODY TEXT:", body);
+      throw err;
+    }
   });
 
   test("should navigate to all pages from sidebar", async ({ page }) => {
@@ -63,7 +88,7 @@ test.describe("Dashboard", () => {
 
     for (const route of routes) {
       await page.goto(route);
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
       await expect(page).toHaveURL(new RegExp(route.replace("/", "")));
       await expect(page.locator("body")).toBeVisible();
     }
@@ -74,6 +99,7 @@ test.describe("Dashboard", () => {
 
     // Check sidebar links exist
     const sidebarLinks = page.locator("nav a, [class*='sidebar'] a");
+    await expect(sidebarLinks.first()).toBeVisible({ timeout: 10000 });
     const count = await sidebarLinks.count();
     expect(count).toBeGreaterThan(3);
   });

@@ -41,6 +41,8 @@ test.describe("Reservation Management", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
+
+  test("should navigate to reservations page", async ({ page }) => {
     await loginAndGo(page, "/reservations");
     await expect(page).toHaveURL(/reservations/);
   });

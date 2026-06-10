@@ -140,9 +140,10 @@ export async function createReservation(
     check_out_date: string;
     rate_per_night: number;
     booking_source?: string;
+    num_guests?: number;
   }
 ) {
-  return apiCall<{ id: string; status: string }>("POST", "/api/v1/reservations", data, token);
+  return apiCall<{ id: string; status: string }>("POST", "/api/v1/reservations", { ...data, num_guests: data.num_guests || 1 }, token);
 }
 
 /**

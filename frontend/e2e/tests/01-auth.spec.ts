@@ -153,20 +153,19 @@ test.describe("Authentication", () => {
       });
       await expect(page).toHaveURL(/dashboard/, { timeout: 15_000 });
 
-      // Dismiss demo data dialog if it appears
-      const dialog = page.locator("[data-testid='demo-data-dialog']");
-      const skipBtn = page.locator("[data-testid='skip-demo-data']");
-      if (await dialog.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await skipBtn.click();
-        await expect(dialog).toBeHidden({ timeout: 5000 });
-      }
+      // Prevent demo data dialog
+      await page.evaluate(() => localStorage.setItem("demo_data_shown", "true"));
+      await page.reload();
+      await page.waitForLoadState("networkidle");
 
-      // Click logout (look for logout button or link)
-      const logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Sign Out"), [data-testid="logout"]');
-      if (await logoutBtn.isVisible()) {
-        await logoutBtn.click();
-        await expect(page).toHaveURL(/login/);
-      }
+      // Click logout
+      const userMenuBtn = page.locator('header button').last();
+      await userMenuBtn.click();
+      
+      const logoutBtn = page.locator('button:has-text("Sign Out")');
+      await expect(logoutBtn).toBeVisible({ timeout: 5000 });
+      await logoutBtn.click();
+      await expect(page).toHaveURL(/login/);
     });
   });
 

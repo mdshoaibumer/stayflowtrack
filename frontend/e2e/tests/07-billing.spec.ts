@@ -39,6 +39,8 @@ test.describe("Billing & Invoicing", () => {
     await page.goto(route);
     await page.waitForLoadState("networkidle");
   }
+
+  test("should navigate to billing page", async ({ page }) => {
     await loginAndGo(page, "/billing");
     await expect(page).toHaveURL(/billing/);
     await expect(page.locator("body")).toBeVisible();
