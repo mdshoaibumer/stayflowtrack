@@ -164,7 +164,7 @@ func main() {
 	authMw := authmiddleware.New(authSvc, log)
 
 	// Rate limiters
-	authLimiter := middleware.NewRateLimiter(50, 1*time.Minute)      // 50 req/min for auth
+	authLimiter := middleware.NewRateLimiter(50, 1*time.Minute)     // 50 req/min for auth
 	globalLimiter := middleware.NewRateLimiter(1000, 1*time.Minute) // 1000 req/min global
 
 	// Router
@@ -378,7 +378,7 @@ func main() {
 
 			// Admin (platform admin only)
 			r.Route("/admin", func(r chi.Router) {
-				r.Use(authmiddleware.RequirePlatformAdmin)
+				r.Use(authMw.RequirePlatformAdmin)
 				r.Get("/tenants", saasHandler.AdminListTenants)
 				r.Get("/metrics", saasHandler.AdminGetMetrics)
 				r.Get("/plans", saasHandler.AdminListPlans)

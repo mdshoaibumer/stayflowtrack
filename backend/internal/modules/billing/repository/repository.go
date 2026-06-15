@@ -238,6 +238,19 @@ func (r *Repository) RecordPayment(ctx context.Context, payment *domain.Payment)
 	return tx.Commit(ctx)
 }
 
+// PaymentExistsByReference checks if a payment with the given reference number already exists for a folio.
+func (r *Repository) PaymentExistsByReference(ctx context.Context, tenantID, folioID uuid.UUID, referenceNumber string) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM payments WHERE tenant_id = $1 AND folio_id = $2 AND reference_number = $3)`,
+		tenantID, folioID, referenceNumber,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check payment exists: %w", err)
+	}
+	return exists, nil
+}
+
 // ListPayments returns all payments for a folio.
 func (r *Repository) ListPayments(ctx context.Context, folioID, tenantID uuid.UUID) ([]domain.Payment, error) {
 	rows, err := r.pool.Query(ctx,
@@ -287,12 +300,24 @@ func (r *Repository) GetInvoiceByID(ctx context.Context, invoiceID, tenantID uui
 		&inv.PaidAmount, &inv.BalanceDue, &inv.CheckInDate, &inv.CheckOutDate, &inv.NumNights,
 		&inv.IssuedAt, &dueDate, &notes, &pdfKey, &inv.CreatedAt)
 
-	if guestEmail != nil { inv.GuestEmail = *guestEmail }
-	if guestPhone != nil { inv.GuestPhone = *guestPhone }
-	if guestAddress != nil { inv.GuestAddress = *guestAddress }
-	if propGST != nil { inv.PropertyGST = *propGST }
-	if notes != nil { inv.Notes = *notes }
-	if pdfKey != nil { inv.PDFKey = *pdfKey }
+	if guestEmail != nil {
+		inv.GuestEmail = *guestEmail
+	}
+	if guestPhone != nil {
+		inv.GuestPhone = *guestPhone
+	}
+	if guestAddress != nil {
+		inv.GuestAddress = *guestAddress
+	}
+	if propGST != nil {
+		inv.PropertyGST = *propGST
+	}
+	if notes != nil {
+		inv.Notes = *notes
+	}
+	if pdfKey != nil {
+		inv.PDFKey = *pdfKey
+	}
 	inv.DueDate = dueDate
 
 	if err == pgx.ErrNoRows {
@@ -375,12 +400,24 @@ func (r *Repository) ListInvoices(ctx context.Context, tenantID uuid.UUID, prope
 			&inv.IssuedAt, &dueDate, &notes, &pdfKey, &inv.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scan invoice: %w", err)
 		}
-		if guestEmail != nil { inv.GuestEmail = *guestEmail }
-		if guestPhone != nil { inv.GuestPhone = *guestPhone }
-		if guestAddress != nil { inv.GuestAddress = *guestAddress }
-		if propGST != nil { inv.PropertyGST = *propGST }
-		if notes != nil { inv.Notes = *notes }
-		if pdfKey != nil { inv.PDFKey = *pdfKey }
+		if guestEmail != nil {
+			inv.GuestEmail = *guestEmail
+		}
+		if guestPhone != nil {
+			inv.GuestPhone = *guestPhone
+		}
+		if guestAddress != nil {
+			inv.GuestAddress = *guestAddress
+		}
+		if propGST != nil {
+			inv.PropertyGST = *propGST
+		}
+		if notes != nil {
+			inv.Notes = *notes
+		}
+		if pdfKey != nil {
+			inv.PDFKey = *pdfKey
+		}
 		inv.DueDate = dueDate
 		invoices = append(invoices, inv)
 	}

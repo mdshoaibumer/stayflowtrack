@@ -128,14 +128,21 @@ func (s *Service) CreateReservation(ctx context.Context, tenantID uuid.UUID, inp
 
 	// Send booking confirmation notification (async, non-blocking)
 	if s.notifSvc != nil {
-		go s.notifSvc.SendBookingConfirmation(context.Background(), tenantID,
-			"", // phone will be looked up from guest
-			"", // guest name
-			"", // property name
-			input.CheckInDate,
-			input.CheckOutDate,
-			res.ID.String(),
-		)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Log panic but don't crash the process
+				}
+			}()
+			s.notifSvc.SendBookingConfirmation(context.Background(), tenantID,
+				"", // phone will be looked up from guest
+				"", // guest name
+				"", // property name
+				input.CheckInDate,
+				input.CheckOutDate,
+				res.ID.String(),
+			)
+		}()
 	}
 
 	return res, nil

@@ -24,7 +24,13 @@ func New(pool *pgxpool.Pool) *Service {
 
 // MarkNoShow marks a confirmed reservation as no-show and optionally charges a fee.
 func (s *Service) MarkNoShow(ctx context.Context, tenantID uuid.UUID, input domain.NoShowInput) error {
-	result, err := s.pool.Exec(ctx,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	result, err := tx.Exec(ctx,
 		`UPDATE reservations SET
 			is_no_show = true,
 			no_show_at = NOW(),
@@ -43,12 +49,20 @@ func (s *Service) MarkNoShow(ctx context.Context, tenantID uuid.UUID, input doma
 	}
 
 	// Release the unit back to available
-	_, err = s.pool.Exec(ctx,
+	_, err = tx.Exec(ctx,
 		`UPDATE units SET status = 'available'
 		 WHERE id = (SELECT unit_id FROM reservations WHERE id = $1) AND tenant_id = $2`,
 		input.ReservationID, tenantID,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("release unit: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	return nil
 }
 
 // ExtendStay extends a checked-in guest's stay, checking availability and adding charges.
@@ -224,12 +238,12 @@ func (s *Service) MoveRoom(ctx context.Context, tenantID, userID uuid.UUID, inpu
 		return nil, fmt.Errorf("update reservation unit: %w", err)
 	}
 
-	// Release old unit, occupy new unit
-	_, err = tx.Exec(ctx, `UPDATE units SET status = 'cleaning' WHERE id = $1`, fromUnitID)
+	// Release old unit, occupy new unit (include tenant_id for defense-in-depth)
+	_, err = tx.Exec(ctx, `UPDATE units SET status = 'cleaning' WHERE id = $1 AND tenant_id = $2`, fromUnitID, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("release old unit: %w", err)
 	}
-	_, err = tx.Exec(ctx, `UPDATE units SET status = 'occupied' WHERE id = $1`, input.ToUnitID)
+	_, err = tx.Exec(ctx, `UPDATE units SET status = 'occupied' WHERE id = $1 AND tenant_id = $2`, input.ToUnitID, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("occupy new unit: %w", err)
 	}

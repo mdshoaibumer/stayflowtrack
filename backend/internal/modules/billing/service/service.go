@@ -105,6 +105,17 @@ func (s *Service) RecordPayment(ctx context.Context, tenantID, userID uuid.UUID,
 		return nil, err
 	}
 
+	// Idempotency check: reject duplicate reference numbers to prevent double-charging on retries
+	if input.ReferenceNumber != "" {
+		exists, err := s.repo.PaymentExistsByReference(ctx, tenantID, input.FolioID, input.ReferenceNumber)
+		if err != nil {
+			return nil, apperrors.Internal(err)
+		}
+		if exists {
+			return nil, apperrors.Conflict("a payment with this reference number already exists")
+		}
+	}
+
 	// Validate refund doesn't exceed paid amount
 	if input.PaymentType == "refund" || input.PaymentType == "deposit_release" {
 		if input.Amount.GreaterThan(folio.PaidAmount) {

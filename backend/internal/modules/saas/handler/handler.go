@@ -291,7 +291,12 @@ func (h *Handler) RazorpayWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Verify webhook signature
 	signature := r.Header.Get("X-Razorpay-Signature")
-	if h.razorpay != nil && signature != "" {
+	if h.razorpay != nil {
+		if signature == "" {
+			h.log.Warn().Msg("missing razorpay webhook signature")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 		if !h.razorpay.VerifyWebhookSignature(body, signature) {
 			h.log.Warn().Msg("invalid razorpay webhook signature")
 			w.WriteHeader(http.StatusUnauthorized)

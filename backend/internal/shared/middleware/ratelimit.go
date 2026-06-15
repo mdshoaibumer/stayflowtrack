@@ -80,12 +80,13 @@ func (rl *RateLimiter) isAllowed(ip string) bool {
 }
 
 // Limit returns middleware that rate limits requests by client IP.
+// NOTE: Relies on chi/middleware.RealIP being applied upstream to set r.RemoteAddr correctly.
 func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Use RemoteAddr which is already set by RealIP middleware upstream.
+		// Do NOT read X-Forwarded-For here — it's attacker-controlled and
+		// would override the trusted IP that RealIP already extracted.
 		ip := r.RemoteAddr
-		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-			ip = fwd
-		}
 
 		if !rl.isAllowed(ip) {
 			w.Header().Set("Retry-After", "60")

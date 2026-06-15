@@ -103,6 +103,11 @@ type RegisterTenantResult struct {
 }
 
 func (s *Service) RegisterTenant(ctx context.Context, input RegisterTenantInput) (*RegisterTenantResult, error) {
+	// Validate password complexity
+	if err := validatePasswordComplexity(input.Password); err != nil {
+		return nil, err
+	}
+
 	slug := generateSlug(input.PropertyName)
 
 	existing, err := s.repo.GetTenantBySlug(ctx, slug)
@@ -173,7 +178,17 @@ func (s *Service) RegisterTenant(ctx context.Context, input RegisterTenantInput)
 	}, nil
 }
 
-func (s *Service) CreateUser(ctx context.Context, tenantID uuid.UUID, input CreateUserInput) (*domain.User, error) {
+func (s *Service) CreateUser(ctx context.Context, tenantID uuid.UUID, callerRole string, input CreateUserInput) (*domain.User, error) {
+	// Enforce role hierarchy: callers can only create users with lower privilege
+	if !canCreateRole(callerRole, input.RoleName) {
+		return nil, apperrors.Forbidden("cannot create user with equal or higher privilege level")
+	}
+
+	// Validate password complexity
+	if err := validatePasswordComplexity(input.Password); err != nil {
+		return nil, err
+	}
+
 	existingUser, err := s.repo.GetUserByEmail(ctx, input.Email)
 	if err != nil {
 		return nil, apperrors.Internal(err)
@@ -357,21 +372,39 @@ func (s *Service) ValidateAccessToken(tokenString string) (*domain.Claims, error
 		return nil, apperrors.Unauthorized("invalid access token")
 	}
 
-	userID, err := uuid.Parse(mapClaims["sub"].(string))
+	sub, ok := mapClaims["sub"].(string)
+	if !ok {
+		return nil, apperrors.Unauthorized("invalid token claims")
+	}
+	userID, err := uuid.Parse(sub)
 	if err != nil {
 		return nil, apperrors.Unauthorized("invalid token claims")
 	}
 
-	tenantID, err := uuid.Parse(mapClaims["tenant_id"].(string))
+	tenantIDStr, ok := mapClaims["tenant_id"].(string)
+	if !ok {
+		return nil, apperrors.Unauthorized("invalid token claims")
+	}
+	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
+		return nil, apperrors.Unauthorized("invalid token claims")
+	}
+
+	role, ok := mapClaims["role"].(string)
+	if !ok {
+		return nil, apperrors.Unauthorized("invalid token claims")
+	}
+
+	email, ok := mapClaims["email"].(string)
+	if !ok {
 		return nil, apperrors.Unauthorized("invalid token claims")
 	}
 
 	return &domain.Claims{
 		UserID:   userID,
 		TenantID: tenantID,
-		RoleName: mapClaims["role"].(string),
-		Email:    mapClaims["email"].(string),
+		RoleName: role,
+		Email:    email,
 	}, nil
 }
 
@@ -433,6 +466,49 @@ func generateRandomToken(length int) (string, error) {
 		return "", fmt.Errorf("generate random token: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+// roleLevel returns a numeric privilege level for role hierarchy enforcement.
+// Higher number = higher privilege.
+func roleLevel(role string) int {
+	switch role {
+	case "super_admin":
+		return 100
+	case "property_admin":
+		return 50
+	case "receptionist":
+		return 20
+	case "housekeeping":
+		return 10
+	default:
+		return 0
+	}
+}
+
+// canCreateRole checks if callerRole has sufficient privilege to create targetRole.
+func canCreateRole(callerRole, targetRole string) bool {
+	return roleLevel(callerRole) > roleLevel(targetRole)
+}
+
+// validatePasswordComplexity ensures passwords meet minimum security requirements.
+func validatePasswordComplexity(password string) error {
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, ch := range password {
+		switch {
+		case unicode.IsUpper(ch):
+			hasUpper = true
+		case unicode.IsLower(ch):
+			hasLower = true
+		case unicode.IsDigit(ch):
+			hasDigit = true
+		case unicode.IsPunct(ch) || unicode.IsSymbol(ch):
+			hasSpecial = true
+		}
+	}
+	if !hasUpper || !hasLower || !hasDigit || !hasSpecial {
+		return apperrors.BadRequest("password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character")
+	}
+	return nil
 }
 
 // splitFullName splits a full name into first and last name parts.

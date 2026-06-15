@@ -23,12 +23,20 @@ const (
 )
 
 type AuthMiddleware struct {
-	authService *service.Service
-	log         zerolog.Logger
+	authService      *service.Service
+	log              zerolog.Logger
+	platformTenantID uuid.UUID // cached at startup, zero value if not configured
 }
 
 func New(authService *service.Service, log zerolog.Logger) *AuthMiddleware {
-	return &AuthMiddleware{authService: authService, log: log}
+	m := &AuthMiddleware{authService: authService, log: log}
+	// Cache platform tenant ID at startup — avoid reading ENV on every request
+	if ptid := os.Getenv("PLATFORM_TENANT_ID"); ptid != "" {
+		if parsed, err := uuid.Parse(ptid); err == nil {
+			m.platformTenantID = parsed
+		}
+	}
+	return m
 }
 
 func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
@@ -105,9 +113,9 @@ func GetTenantID(ctx context.Context) string {
 }
 
 // RequirePlatformAdmin restricts access to the designated platform admin tenant.
-// The platform tenant is identified by the PLATFORM_TENANT_ID environment variable.
+// The platform tenant is identified by the PLATFORM_TENANT_ID environment variable (cached at startup).
 // This prevents tenant-level super_admins from accessing platform-wide admin APIs.
-func RequirePlatformAdmin(next http.Handler) http.Handler {
+func (m *AuthMiddleware) RequirePlatformAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := GetClaims(r.Context())
 		if claims == nil {
@@ -115,19 +123,12 @@ func RequirePlatformAdmin(next http.Handler) http.Handler {
 			return
 		}
 
-		platformTenantID := os.Getenv("PLATFORM_TENANT_ID")
-		if platformTenantID == "" {
+		if m.platformTenantID == uuid.Nil {
 			response.Err(w, apperrors.Forbidden("platform admin not configured"))
 			return
 		}
 
-		expectedID, err := uuid.Parse(platformTenantID)
-		if err != nil {
-			response.Err(w, apperrors.Forbidden("platform admin not configured"))
-			return
-		}
-
-		if claims.TenantID != expectedID || claims.RoleName != "super_admin" {
+		if claims.TenantID != m.platformTenantID || claims.RoleName != "super_admin" {
 			response.Err(w, apperrors.Forbidden("platform admin access required"))
 			return
 		}

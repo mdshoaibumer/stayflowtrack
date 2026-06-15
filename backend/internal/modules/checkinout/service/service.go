@@ -54,13 +54,20 @@ func (s *Service) CheckIn(ctx context.Context, tenantID, userID uuid.UUID, input
 
 	// Send check-in confirmation notification (async, don't block on failure)
 	if s.notifSvc != nil {
-		go s.notifSvc.SendBookingConfirmation(context.Background(), tenantID,
-			"",                 // phone fetched from guest record
-			info.GuestName, "", // property name
-			info.CheckInDate.Format("02-Jan-2006"),
-			info.CheckOutDate.Format("02-Jan-2006"),
-			info.ID.String(),
-		)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Log panic but don't crash the process
+				}
+			}()
+			s.notifSvc.SendBookingConfirmation(context.Background(), tenantID,
+				"",                 // phone fetched from guest record
+				info.GuestName, "", // property name
+				info.CheckInDate.Format("02-Jan-2006"),
+				info.CheckOutDate.Format("02-Jan-2006"),
+				info.ID.String(),
+			)
+		}()
 	}
 
 	return &CheckInResult{

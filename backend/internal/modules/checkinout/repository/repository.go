@@ -23,18 +23,21 @@ func New(pool *pgxpool.Pool) *Repository {
 
 // ReservationInfo holds info needed for check-in/out operations.
 type ReservationInfo struct {
-	ID           uuid.UUID
-	TenantID     uuid.UUID
-	PropertyID   uuid.UUID
-	UnitID       uuid.UUID
-	GuestID      uuid.UUID
-	Status       string
-	CheckInDate  time.Time
-	CheckOutDate time.Time
-	RatePerNight decimal.Decimal
-	TotalAmount  decimal.Decimal
-	GuestName    string
-	UnitNumber   string
+	ID              uuid.UUID
+	TenantID        uuid.UUID
+	PropertyID      uuid.UUID
+	UnitID          uuid.UUID
+	GuestID         uuid.UUID
+	Status          string
+	CheckInDate     time.Time
+	CheckOutDate    time.Time
+	RatePerNight    decimal.Decimal
+	TotalAmount     decimal.Decimal
+	GuestName       string
+	GuestPhone      string
+	PropertyName    string
+	PropertyAddress string
+	UnitNumber      string
 }
 
 func (r *Repository) GetReservationForCheckIn(ctx context.Context, reservationID, tenantID uuid.UUID) (*ReservationInfo, error) {
@@ -42,15 +45,18 @@ func (r *Repository) GetReservationForCheckIn(ctx context.Context, reservationID
 	err := r.pool.QueryRow(ctx,
 		`SELECT r.id, r.tenant_id, r.property_id, r.unit_id, r.guest_id,
 		        r.status, r.check_in_date, r.check_out_date, r.rate_per_night, r.total_amount,
-		        g.first_name || ' ' || g.last_name, u.unit_number
+		        g.first_name || ' ' || g.last_name, COALESCE(g.phone, ''), u.unit_number,
+		        COALESCE(p.name, ''), COALESCE(p.address, '')
 		 FROM reservations r
 		 JOIN guests g ON r.guest_id = g.id
 		 JOIN units u ON r.unit_id = u.id
+		 JOIN properties p ON r.property_id = p.id
 		 WHERE r.id = $1 AND r.tenant_id = $2`,
 		reservationID, tenantID,
 	).Scan(&info.ID, &info.TenantID, &info.PropertyID, &info.UnitID, &info.GuestID,
 		&info.Status, &info.CheckInDate, &info.CheckOutDate, &info.RatePerNight, &info.TotalAmount,
-		&info.GuestName, &info.UnitNumber)
+		&info.GuestName, &info.GuestPhone, &info.UnitNumber,
+		&info.PropertyName, &info.PropertyAddress)
 
 	if err == pgx.ErrNoRows {
 		return nil, apperrors.NotFound("reservation", reservationID.String())
@@ -330,7 +336,7 @@ func (r *Repository) PerformCheckOut(ctx context.Context, tenantID uuid.UUID, in
 			$15, $16, $17, $18, $19
 		) RETURNING id`,
 		tenantID, folioID, info.ID, info.GuestID, info.PropertyID,
-		info.GuestName, "", "", "",
+		info.GuestName, info.GuestPhone, info.PropertyName, info.PropertyAddress,
 		subtotal, cgst, sgst, taxTotal, totalAmount,
 		paidAmount, balance, info.CheckInDate, info.CheckOutDate, nights,
 	).Scan(&invoiceID)

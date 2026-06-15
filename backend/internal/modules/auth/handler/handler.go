@@ -120,7 +120,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.CreateUser(r.Context(), claims.TenantID, input)
+	user, err := h.service.CreateUser(r.Context(), claims.TenantID, claims.RoleName, input)
 	if err != nil {
 		h.log.Error().Err(err).Msg("create user failed")
 		response.Err(w, err)
