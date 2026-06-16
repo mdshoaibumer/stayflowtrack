@@ -107,8 +107,8 @@ func GetClaims(ctx context.Context) *domain.Claims {
 }
 
 // GetTenantID retrieves the tenant ID from context.
-func GetTenantID(ctx context.Context) string {
-	id, _ := ctx.Value(tenantKey).(string)
+func GetTenantID(ctx context.Context) uuid.UUID {
+	id, _ := ctx.Value(tenantKey).(uuid.UUID)
 	return id
 }
 

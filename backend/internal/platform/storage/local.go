@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/stayflow/stayflow-track/internal/config"
@@ -28,8 +29,21 @@ func NewLocalStore(cfg config.StorageConfig) (*LocalStore, error) {
 	return &LocalStore{basePath: basePath}, nil
 }
 
-func (l *LocalStore) Upload(ctx context.Context, key string, reader io.Reader, contentType string, size int64) (*FileMetadata, error) {
+func (l *LocalStore) safePath(key string) (string, error) {
 	fullPath := filepath.Join(l.basePath, filepath.Clean(key))
+	absBase, _ := filepath.Abs(l.basePath)
+	absPath, _ := filepath.Abs(fullPath)
+	if !strings.HasPrefix(absPath, absBase+string(filepath.Separator)) && absPath != absBase {
+		return "", fmt.Errorf("invalid file path")
+	}
+	return fullPath, nil
+}
+
+func (l *LocalStore) Upload(ctx context.Context, key string, reader io.Reader, contentType string, size int64) (*FileMetadata, error) {
+	fullPath, err := l.safePath(key)
+	if err != nil {
+		return nil, err
+	}
 	dir := filepath.Dir(fullPath)
 
 	if err := os.MkdirAll(dir, 0750); err != nil {
@@ -57,7 +71,10 @@ func (l *LocalStore) Upload(ctx context.Context, key string, reader io.Reader, c
 }
 
 func (l *LocalStore) Download(ctx context.Context, key string) (io.ReadCloser, error) {
-	fullPath := filepath.Join(l.basePath, filepath.Clean(key))
+	fullPath, err := l.safePath(key)
+	if err != nil {
+		return nil, err
+	}
 	file, err := os.Open(fullPath)
 	if err != nil {
 		return nil, fmt.Errorf("open file: %w", err)
@@ -66,7 +83,10 @@ func (l *LocalStore) Download(ctx context.Context, key string) (io.ReadCloser, e
 }
 
 func (l *LocalStore) Delete(ctx context.Context, key string) error {
-	fullPath := filepath.Join(l.basePath, filepath.Clean(key))
+	fullPath, err := l.safePath(key)
+	if err != nil {
+		return err
+	}
 	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("delete file: %w", err)
 	}

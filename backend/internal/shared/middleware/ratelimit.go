@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -86,7 +87,10 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 		// Use RemoteAddr which is already set by RealIP middleware upstream.
 		// Do NOT read X-Forwarded-For here — it's attacker-controlled and
 		// would override the trusted IP that RealIP already extracted.
-		ip := r.RemoteAddr
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
 
 		if !rl.isAllowed(ip) {
 			w.Header().Set("Retry-After", "60")

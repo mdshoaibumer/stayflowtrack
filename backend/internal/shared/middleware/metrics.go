@@ -148,16 +148,17 @@ func NewHealthHandler(dbCheck func() error) *HealthHandler {
 }
 
 func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
-	dbOK := "ok"
-	if err := h.dbCheck(); err != nil {
-		dbOK = "error: " + err.Error()
-		w.WriteHeader(http.StatusServiceUnavailable)
-	} else {
-		w.WriteHeader(http.StatusOK)
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"status":"` + dbOK + `","active_requests":` +
+	if err := h.dbCheck(); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"status":"error","active_requests":` +
+			strconv.FormatInt(GlobalMetrics.ActiveRequests.Load(), 10) +
+			`,"total_requests":` + strconv.FormatInt(GlobalMetrics.TotalRequests.Load(), 10) +
+			`,"total_errors":` + strconv.FormatInt(GlobalMetrics.TotalErrors.Load(), 10) + `}`))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"ok","active_requests":` +
 		strconv.FormatInt(GlobalMetrics.ActiveRequests.Load(), 10) +
 		`,"total_requests":` + strconv.FormatInt(GlobalMetrics.TotalRequests.Load(), 10) +
 		`,"total_errors":` + strconv.FormatInt(GlobalMetrics.TotalErrors.Load(), 10) + `}`))

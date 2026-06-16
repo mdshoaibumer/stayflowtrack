@@ -169,6 +169,9 @@ func (c *Config) validate() error {
 	}
 	// Reject weak secrets in production
 	if c.App.Env == "production" {
+		if c.Database.SSLMode == "disable" {
+			return fmt.Errorf("DB_SSL_MODE must not be 'disable' in production")
+		}
 		if len(c.JWT.AccessSecret) < 32 {
 			return fmt.Errorf("JWT_ACCESS_SECRET must be at least 32 characters in production")
 		}

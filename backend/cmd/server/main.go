@@ -164,8 +164,8 @@ func main() {
 	authMw := authmiddleware.New(authSvc, log)
 
 	// Rate limiters
-	authLimiter := middleware.NewRateLimiter(50, 1*time.Minute)     // 50 req/min for auth
-	globalLimiter := middleware.NewRateLimiter(1000, 1*time.Minute) // 1000 req/min global
+	authLimiter := middleware.NewRateLimiter(100, 1*time.Minute)    // 100 req/min for auth
+	globalLimiter := middleware.NewRateLimiter(5000, 1*time.Minute) // 5000 req/min global
 
 	// Router
 	r := chi.NewRouter()
@@ -193,7 +193,6 @@ func main() {
 	// Health check
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
-	r.Get("/metrics", middleware.MetricsHandler)
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
@@ -381,17 +380,19 @@ func main() {
 				r.Use(authMw.RequirePlatformAdmin)
 				r.Get("/tenants", saasHandler.AdminListTenants)
 				r.Get("/metrics", saasHandler.AdminGetMetrics)
+				r.Get("/system-metrics", middleware.MetricsHandler)
 				r.Get("/plans", saasHandler.AdminListPlans)
 			})
 		})
 	})
 
 	srv := &http.Server{
-		Addr:         ":" + cfg.App.Port,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              ":" + cfg.App.Port,
+		Handler:           r,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	go func() {
