@@ -249,7 +249,7 @@ func (r *Repository) CheckConflict(ctx context.Context, unitID uuid.UUID, checkI
 
 func (r *Repository) GetAvailableUnits(ctx context.Context, propertyID, tenantID uuid.UUID, checkIn, checkOut time.Time) ([]domain.AvailableUnit, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT u.id, u.unit_number, u.floor, ut.name, ut.base_rate
+		`SELECT u.id, u.unit_number, COALESCE(u.floor, ''), ut.name, ut.base_rate
 		 FROM units u
 		 JOIN unit_types ut ON u.unit_type_id = ut.id
 		 WHERE u.property_id = $1

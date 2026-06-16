@@ -100,7 +100,7 @@ func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (*domain.Use
 
 	err := r.pool.QueryRow(ctx,
 		`SELECT u.id, u.tenant_id, u.role_id, u.email, u.password_hash,
-		        u.first_name, u.last_name, u.phone, u.is_active, u.last_login_at,
+		        u.first_name, u.last_name, COALESCE(u.phone, ''), u.is_active, u.last_login_at,
 		        u.created_at, u.updated_at, r.name, r.permissions
 		 FROM users u JOIN roles r ON u.role_id = r.id
 		 WHERE u.id = $1`, id,
@@ -125,7 +125,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*domain.
 
 	err := r.pool.QueryRow(ctx,
 		`SELECT u.id, u.tenant_id, u.role_id, u.email, u.password_hash,
-		        u.first_name, u.last_name, u.phone, u.is_active, u.last_login_at,
+		        u.first_name, u.last_name, COALESCE(u.phone, ''), u.is_active, u.last_login_at,
 		        u.created_at, u.updated_at, r.name, r.permissions
 		 FROM users u JOIN roles r ON u.role_id = r.id
 		 WHERE u.email = $1`, email,
@@ -152,7 +152,7 @@ func (r *Repository) GetUserByEmailAndTenant(ctx context.Context, email, tenantS
 
 	err := r.pool.QueryRow(ctx,
 		`SELECT u.id, u.tenant_id, u.role_id, u.email, u.password_hash,
-		        u.first_name, u.last_name, u.phone, u.is_active, u.last_login_at,
+		        u.first_name, u.last_name, COALESCE(u.phone, ''), u.is_active, u.last_login_at,
 		        u.created_at, u.updated_at, r.name, r.permissions
 		 FROM users u
 		 JOIN roles r ON u.role_id = r.id

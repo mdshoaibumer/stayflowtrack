@@ -37,7 +37,7 @@ func (r *Repository) CreateProperty(ctx context.Context, p *domain.Property) err
 func (r *Repository) GetPropertyByID(ctx context.Context, id, tenantID uuid.UUID) (*domain.Property, error) {
 	var p domain.Property
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, tenant_id, name, address, city, state, country, pincode, phone, email, total_units, status, created_at, updated_at
+		`SELECT id, tenant_id, name, address, city, state, country, COALESCE(pincode, ''), COALESCE(phone, ''), COALESCE(email, ''), total_units, status, created_at, updated_at
 		 FROM properties WHERE id = $1 AND tenant_id = $2`, id, tenantID,
 	).Scan(&p.ID, &p.TenantID, &p.Name, &p.Address, &p.City, &p.State, &p.Country,
 		&p.Pincode, &p.Phone, &p.Email, &p.TotalUnits, &p.Status, &p.CreatedAt, &p.UpdatedAt)
@@ -61,7 +61,7 @@ func (r *Repository) ListProperties(ctx context.Context, tenantID uuid.UUID, lim
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, tenant_id, name, address, city, state, country, pincode, phone, email, total_units, status, created_at, updated_at
+		`SELECT id, tenant_id, name, address, city, state, country, COALESCE(pincode, ''), COALESCE(phone, ''), COALESCE(email, ''), total_units, status, created_at, updated_at
 		 FROM properties WHERE tenant_id = $1 AND status = 'active' ORDER BY name LIMIT $2 OFFSET $3`,
 		tenantID, limit, offset,
 	)
@@ -99,7 +99,7 @@ func (r *Repository) UpdateProperty(ctx context.Context, p *domain.Property) err
 			phone = COALESCE(NULLIF($9, ''), phone),
 			email = COALESCE(NULLIF($10, ''), email)
 		 WHERE id = $1 AND tenant_id = $2
-		 RETURNING id, tenant_id, name, address, city, state, country, pincode, phone, email, total_units, status, created_at, updated_at`,
+		 RETURNING id, tenant_id, name, address, city, state, country, COALESCE(pincode, ''), COALESCE(phone, ''), COALESCE(email, ''), total_units, status, created_at, updated_at`,
 		p.ID, p.TenantID, p.Name, p.Address, p.City, p.State, p.Country, p.Pincode, p.Phone, p.Email,
 	).Scan(&p.ID, &p.TenantID, &p.Name, &p.Address, &p.City, &p.State, &p.Country,
 		&p.Pincode, &p.Phone, &p.Email, &p.TotalUnits, &p.Status, &p.CreatedAt, &p.UpdatedAt)
@@ -131,7 +131,7 @@ func (r *Repository) CreateUnitType(ctx context.Context, ut *domain.UnitType) er
 
 func (r *Repository) ListUnitTypesByProperty(ctx context.Context, propertyID, tenantID uuid.UUID) ([]domain.UnitType, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, tenant_id, property_id, name, description, base_rate, max_occupancy, amenities, created_at, updated_at
+		`SELECT id, tenant_id, property_id, name, COALESCE(description, ''), base_rate, max_occupancy, amenities, created_at, updated_at
 		 FROM unit_types WHERE property_id = $1 AND tenant_id = $2 ORDER BY name`,
 		propertyID, tenantID,
 	)
@@ -183,7 +183,7 @@ func (r *Repository) CreateUnit(ctx context.Context, u *domain.Unit) error {
 func (r *Repository) GetUnitByID(ctx context.Context, id, tenantID uuid.UUID) (*domain.Unit, error) {
 	var u domain.Unit
 	err := r.pool.QueryRow(ctx,
-		`SELECT u.id, u.tenant_id, u.property_id, u.unit_type_id, u.unit_number, u.floor, u.status, u.notes,
+		`SELECT u.id, u.tenant_id, u.property_id, u.unit_type_id, u.unit_number, COALESCE(u.floor, ''), u.status, COALESCE(u.notes, ''),
 		        ut.name, ut.base_rate, u.created_at, u.updated_at
 		 FROM units u JOIN unit_types ut ON u.unit_type_id = ut.id
 		 WHERE u.id = $1 AND u.tenant_id = $2`, id, tenantID,
@@ -209,7 +209,7 @@ func (r *Repository) ListUnits(ctx context.Context, propertyID, tenantID uuid.UU
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT u.id, u.tenant_id, u.property_id, u.unit_type_id, u.unit_number, u.floor, u.status, u.notes,
+		`SELECT u.id, u.tenant_id, u.property_id, u.unit_type_id, u.unit_number, COALESCE(u.floor, ''), u.status, COALESCE(u.notes, ''),
 		        ut.name, ut.base_rate, u.created_at, u.updated_at
 		 FROM units u JOIN unit_types ut ON u.unit_type_id = ut.id
 		 WHERE u.property_id = $1 AND u.tenant_id = $2
@@ -310,7 +310,7 @@ func (r *Repository) SearchUnits(ctx context.Context, params SearchUnitsParams) 
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT u.id, u.tenant_id, u.property_id, u.unit_type_id, u.unit_number, u.floor, u.status, u.notes,
+		`SELECT u.id, u.tenant_id, u.property_id, u.unit_type_id, u.unit_number, COALESCE(u.floor, ''), u.status, COALESCE(u.notes, ''),
 		        ut.name, ut.base_rate, u.created_at, u.updated_at
 		 FROM units u JOIN unit_types ut ON u.unit_type_id = ut.id
 		 WHERE u.property_id = $1 AND u.tenant_id = $2

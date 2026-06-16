@@ -25,7 +25,7 @@ func New(pool *pgxpool.Pool) *Repository {
 // Plans
 
 func (r *Repository) ListPlans(ctx context.Context, activeOnly bool) ([]domain.SubscriptionPlan, error) {
-	query := `SELECT id, name, slug, description, tier, price_monthly, price_yearly, currency,
+	query := `SELECT id, name, slug, COALESCE(description, ''), tier, price_monthly, price_yearly, currency,
 	           max_properties, max_units, max_users, features, is_active, trial_days, sort_order, created_at, updated_at
 	          FROM subscription_plans`
 	if activeOnly {
@@ -63,7 +63,7 @@ func (r *Repository) GetPlanBySlug(ctx context.Context, slug string) (*domain.Su
 	var p domain.SubscriptionPlan
 	var featuresJSON []byte
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, slug, description, tier, price_monthly, price_yearly, currency,
+		`SELECT id, name, slug, COALESCE(description, ''), tier, price_monthly, price_yearly, currency,
 		        max_properties, max_units, max_users, features, is_active, trial_days, sort_order, created_at, updated_at
 		 FROM subscription_plans WHERE slug = $1`, slug,
 	).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.Tier,
@@ -88,7 +88,7 @@ func (r *Repository) GetSubscription(ctx context.Context, tenantID uuid.UUID) (*
 	err := r.pool.QueryRow(ctx,
 		`SELECT ts.id, ts.tenant_id, ts.plan_id, ts.status, ts.billing_cycle,
 		        ts.current_period_start, ts.current_period_end, ts.trial_ends_at, ts.cancelled_at,
-		        ts.razorpay_subscription_id, ts.razorpay_customer_id, ts.created_at, ts.updated_at,
+		        COALESCE(ts.razorpay_subscription_id, ''), COALESCE(ts.razorpay_customer_id, ''), ts.created_at, ts.updated_at,
 		        sp.name, sp.tier
 		 FROM tenant_subscriptions ts
 		 JOIN subscription_plans sp ON ts.plan_id = sp.id
@@ -166,7 +166,7 @@ func (r *Repository) ListBillingEvents(ctx context.Context, tenantID uuid.UUID, 
 
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, subscription_id, event_type, amount, currency,
-		        razorpay_payment_id, razorpay_order_id, status, metadata, created_at
+		        COALESCE(razorpay_payment_id, ''), COALESCE(razorpay_order_id, ''), status, metadata, created_at
 		 FROM billing_events WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 		tenantID, limit, offset,
 	)

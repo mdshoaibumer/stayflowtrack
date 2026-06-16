@@ -42,9 +42,9 @@ func (r *Repository) CreateGuest(ctx context.Context, g *domain.Guest) error {
 func (r *Repository) GetGuestByID(ctx context.Context, id, tenantID uuid.UUID) (*domain.Guest, error) {
 	var g domain.Guest
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, tenant_id, first_name, last_name, email, phone,
-		        address, city, state, country, pincode, nationality,
-		        date_of_birth, aadhaar_number, passport_number, notes,
+		`SELECT id, tenant_id, first_name, last_name, COALESCE(email, ''), COALESCE(phone, ''),
+		        COALESCE(address, ''), COALESCE(city, ''), COALESCE(state, ''), COALESCE(country, ''), COALESCE(pincode, ''), COALESCE(nationality, ''),
+		        date_of_birth, COALESCE(aadhaar_number, ''), COALESCE(passport_number, ''), COALESCE(notes, ''),
 		        total_stays, created_at, updated_at
 		 FROM guests WHERE id = $1 AND tenant_id = $2`, id, tenantID,
 	).Scan(&g.ID, &g.TenantID, &g.FirstName, &g.LastName, &g.Email, &g.Phone,
@@ -79,9 +79,9 @@ func (r *Repository) UpdateGuest(ctx context.Context, g *domain.Guest) error {
 			passport_number = COALESCE(NULLIF($15, ''), passport_number),
 			notes = $16
 		 WHERE id = $1 AND tenant_id = $2
-		 RETURNING id, tenant_id, first_name, last_name, email, phone,
-		           address, city, state, country, pincode, nationality,
-		           date_of_birth, aadhaar_number, passport_number, notes,
+		 RETURNING id, tenant_id, first_name, last_name, COALESCE(email, ''), COALESCE(phone, ''),
+		           COALESCE(address, ''), COALESCE(city, ''), COALESCE(state, ''), COALESCE(country, ''), COALESCE(pincode, ''), COALESCE(nationality, ''),
+		           date_of_birth, COALESCE(aadhaar_number, ''), COALESCE(passport_number, ''), COALESCE(notes, ''),
 		           total_stays, created_at, updated_at`,
 		g.ID, g.TenantID, g.FirstName, g.LastName, g.Email, g.Phone,
 		g.Address, g.City, g.State, g.Country, g.Pincode, g.Nationality,
@@ -110,9 +110,9 @@ func (r *Repository) ListGuests(ctx context.Context, tenantID uuid.UUID, limit, 
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, tenant_id, first_name, last_name, email, phone,
-		        address, city, state, country, pincode, nationality,
-		        date_of_birth, aadhaar_number, passport_number, notes,
+		`SELECT id, tenant_id, first_name, last_name, COALESCE(email, ''), COALESCE(phone, ''),
+		        COALESCE(address, ''), COALESCE(city, ''), COALESCE(state, ''), COALESCE(country, ''), COALESCE(pincode, ''), COALESCE(nationality, ''),
+		        date_of_birth, COALESCE(aadhaar_number, ''), COALESCE(passport_number, ''), COALESCE(notes, ''),
 		        total_stays, created_at, updated_at
 		 FROM guests WHERE tenant_id = $1
 		 ORDER BY last_name, first_name LIMIT $2 OFFSET $3`,
@@ -160,9 +160,9 @@ func (r *Repository) SearchGuests(ctx context.Context, tenantID uuid.UUID, query
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, tenant_id, first_name, last_name, email, phone,
-		        address, city, state, country, pincode, nationality,
-		        date_of_birth, aadhaar_number, passport_number, notes,
+		`SELECT id, tenant_id, first_name, last_name, COALESCE(email, ''), COALESCE(phone, ''),
+		        COALESCE(address, ''), COALESCE(city, ''), COALESCE(state, ''), COALESCE(country, ''), COALESCE(pincode, ''), COALESCE(nationality, ''),
+		        date_of_birth, COALESCE(aadhaar_number, ''), COALESCE(passport_number, ''), COALESCE(notes, ''),
 		        total_stays, created_at, updated_at
 		 FROM guests
 		 WHERE tenant_id = $1

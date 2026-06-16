@@ -36,7 +36,7 @@ func (r *Repository) GetCalendarView(ctx context.Context, tenantID, propertyID u
 
 	// Fetch all units for the property
 	unitRows, err := r.pool.Query(ctx,
-		`SELECT u.id, u.unit_number, u.floor, u.status, ut.name, ut.base_rate
+		`SELECT u.id, u.unit_number, COALESCE(u.floor, ''), u.status, ut.name, ut.base_rate
 		 FROM units u
 		 JOIN unit_types ut ON u.unit_type_id = ut.id
 		 WHERE u.property_id = $1 AND u.tenant_id = $2

@@ -68,7 +68,7 @@ func (r *Repository) GetByID(ctx context.Context, id, tenantID uuid.UUID) (*doma
 	err := r.pool.QueryRow(ctx,
 		`SELECT lo.id, lo.tenant_id, lo.property_id, lo.reservation_id, lo.guest_id, lo.folio_id, lo.unit_id,
 		        lo.order_number, lo.order_type, lo.status, lo.total_items, lo.total_amount, lo.tax_amount, lo.grand_total,
-		        lo.notes, lo.received_by, lo.received_at, lo.washed_at, lo.ready_at, lo.delivered_at, lo.delivered_by,
+		        COALESCE(lo.notes, ''), lo.received_by, lo.received_at, lo.washed_at, lo.ready_at, lo.delivered_at, lo.delivered_by,
 		        lo.posted_to_folio, lo.created_at, lo.updated_at,
 		        COALESCE(g.first_name || ' ' || g.last_name, ''),
 		        COALESCE(u.unit_number, '')
@@ -91,7 +91,7 @@ func (r *Repository) GetByID(ctx context.Context, id, tenantID uuid.UUID) (*doma
 
 	// Fetch items
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, order_id, item_type, description, quantity, unit_price, amount, service_type, created_at
+		`SELECT id, order_id, item_type, COALESCE(description, ''), quantity, unit_price, amount, service_type, created_at
 		 FROM laundry_items WHERE order_id = $1 ORDER BY created_at`, id)
 	if err != nil {
 		return nil, fmt.Errorf("get items: %w", err)
@@ -129,7 +129,7 @@ func (r *Repository) ListOrders(ctx context.Context, tenantID uuid.UUID, propert
 	rows, err := r.pool.Query(ctx,
 		`SELECT lo.id, lo.tenant_id, lo.property_id, lo.reservation_id, lo.guest_id, lo.folio_id, lo.unit_id,
 		        lo.order_number, lo.order_type, lo.status, lo.total_items, lo.total_amount, lo.tax_amount, lo.grand_total,
-		        lo.notes, lo.received_by, lo.received_at, lo.washed_at, lo.ready_at, lo.delivered_at, lo.delivered_by,
+		        COALESCE(lo.notes, ''), lo.received_by, lo.received_at, lo.washed_at, lo.ready_at, lo.delivered_at, lo.delivered_by,
 		        lo.posted_to_folio, lo.created_at, lo.updated_at,
 		        COALESCE(g.first_name || ' ' || g.last_name, ''),
 		        COALESCE(u.unit_number, '')

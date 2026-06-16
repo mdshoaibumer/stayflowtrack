@@ -24,6 +24,7 @@ func New(pool *pgxpool.Pool) *Repository {
 // GetFolioByID returns a folio with tenant isolation.
 func (r *Repository) GetFolioByID(ctx context.Context, folioID, tenantID uuid.UUID) (*domain.Folio, error) {
 	var f domain.Folio
+	var notes *string
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, tenant_id, reservation_id, guest_id, property_id, folio_number,
 		        status, subtotal, tax_total, total_amount, paid_amount, balance,
@@ -32,7 +33,7 @@ func (r *Repository) GetFolioByID(ctx context.Context, folioID, tenantID uuid.UU
 		folioID, tenantID,
 	).Scan(&f.ID, &f.TenantID, &f.ReservationID, &f.GuestID, &f.PropertyID, &f.FolioNumber,
 		&f.Status, &f.Subtotal, &f.TaxTotal, &f.TotalAmount, &f.PaidAmount, &f.Balance,
-		&f.Notes, &f.CreatedAt, &f.UpdatedAt, &f.ClosedAt)
+		&notes, &f.CreatedAt, &f.UpdatedAt, &f.ClosedAt)
 
 	if err == pgx.ErrNoRows {
 		return nil, apperrors.NotFound("folio", folioID.String())
@@ -40,12 +41,16 @@ func (r *Repository) GetFolioByID(ctx context.Context, folioID, tenantID uuid.UU
 	if err != nil {
 		return nil, fmt.Errorf("get folio: %w", err)
 	}
+	if notes != nil {
+		f.Notes = *notes
+	}
 	return &f, nil
 }
 
 // GetFolioByReservation returns the open folio for a reservation.
 func (r *Repository) GetFolioByReservation(ctx context.Context, reservationID, tenantID uuid.UUID) (*domain.Folio, error) {
 	var f domain.Folio
+	var notes *string
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, tenant_id, reservation_id, guest_id, property_id, folio_number,
 		        status, subtotal, tax_total, total_amount, paid_amount, balance,
@@ -54,13 +59,16 @@ func (r *Repository) GetFolioByReservation(ctx context.Context, reservationID, t
 		reservationID, tenantID,
 	).Scan(&f.ID, &f.TenantID, &f.ReservationID, &f.GuestID, &f.PropertyID, &f.FolioNumber,
 		&f.Status, &f.Subtotal, &f.TaxTotal, &f.TotalAmount, &f.PaidAmount, &f.Balance,
-		&f.Notes, &f.CreatedAt, &f.UpdatedAt, &f.ClosedAt)
+		&notes, &f.CreatedAt, &f.UpdatedAt, &f.ClosedAt)
 
 	if err == pgx.ErrNoRows {
 		return nil, apperrors.NotFound("folio", "for reservation "+reservationID.String())
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get folio by reservation: %w", err)
+	}
+	if notes != nil {
+		f.Notes = *notes
 	}
 	return &f, nil
 }
@@ -153,7 +161,7 @@ func (r *Repository) VoidLineItem(ctx context.Context, itemID, tenantID uuid.UUI
 func (r *Repository) ListLineItems(ctx context.Context, folioID, tenantID uuid.UUID) ([]domain.LineItem, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, folio_id, category, description, quantity, unit_price, amount,
-		        tax_rate, tax_amount, total, date, is_void, void_reason, created_at, created_by
+		        tax_rate, tax_amount, total, date, is_void, COALESCE(void_reason, ''), created_at, COALESCE(created_by, '00000000-0000-0000-0000-000000000000')
 		 FROM line_items WHERE folio_id = $1 AND tenant_id = $2 ORDER BY date, created_at`,
 		folioID, tenantID,
 	)
@@ -255,7 +263,7 @@ func (r *Repository) PaymentExistsByReference(ctx context.Context, tenantID, fol
 func (r *Repository) ListPayments(ctx context.Context, folioID, tenantID uuid.UUID) ([]domain.Payment, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, folio_id, invoice_id, payment_type, payment_method, amount,
-		        reference_number, notes, received_by, created_at
+		        COALESCE(reference_number, ''), COALESCE(notes, ''), COALESCE(received_by, '00000000-0000-0000-0000-000000000000'), created_at
 		 FROM payments WHERE folio_id = $1 AND tenant_id = $2 ORDER BY created_at`,
 		folioID, tenantID,
 	)
@@ -506,7 +514,7 @@ func (r *Repository) GetFolioSummary(ctx context.Context, folioID, tenantID uuid
 func (r *Repository) GetPaymentsByDateRange(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]domain.Payment, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, folio_id, invoice_id, payment_type, payment_method, amount,
-		        reference_number, notes, received_by, created_at
+		        COALESCE(reference_number, ''), COALESCE(notes, ''), COALESCE(received_by, '00000000-0000-0000-0000-000000000000'), created_at
 		 FROM payments WHERE tenant_id = $1 AND created_at >= $2 AND created_at < $3
 		 ORDER BY created_at`,
 		tenantID, start, end,

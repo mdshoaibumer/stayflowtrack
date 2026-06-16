@@ -98,8 +98,8 @@ func (r *Repository) ListLogs(ctx context.Context, tenantID uuid.UUID, limit, of
 	_ = r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM notification_logs WHERE tenant_id = $1`, tenantID).Scan(&count)
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, tenant_id, template_id, event_type, channel, recipient_phone, recipient_email,
-		        status, provider, provider_message_id, payload, error_message, sent_at, delivered_at, created_at
+		`SELECT id, tenant_id, template_id, event_type, channel, COALESCE(recipient_phone, ''), COALESCE(recipient_email, ''),
+		        status, COALESCE(provider, ''), COALESCE(provider_message_id, ''), payload, COALESCE(error_message, ''), sent_at, delivered_at, created_at
 		 FROM notification_logs WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 		tenantID, limit, offset,
 	)

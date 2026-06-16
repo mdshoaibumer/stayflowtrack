@@ -40,9 +40,9 @@ func (r *Repository) GetByID(ctx context.Context, id, tenantID uuid.UUID) (*doma
 	var t domain.Task
 	err := r.pool.QueryRow(ctx,
 		`SELECT t.id, t.tenant_id, t.property_id, t.unit_id, t.assigned_to,
-		        t.status, t.priority, t.task_type, t.notes,
+		        t.status, t.priority, t.task_type, COALESCE(t.notes, ''),
 		        t.started_at, t.completed_at, t.inspected_by, t.inspected_at,
-		        t.estimated_minutes, t.actual_minutes, t.created_by, t.created_at, t.updated_at,
+		        COALESCE(t.estimated_minutes, 0), t.actual_minutes, t.created_by, t.created_at, t.updated_at,
 		        u.unit_number,
 		        COALESCE(usr.first_name || ' ' || usr.last_name, '')
 		 FROM housekeeping_tasks t
@@ -104,9 +104,9 @@ func (r *Repository) List(ctx context.Context, tenantID uuid.UUID, filter domain
 
 	query := fmt.Sprintf(
 		`SELECT t.id, t.tenant_id, t.property_id, t.unit_id, t.assigned_to,
-		        t.status, t.priority, t.task_type, t.notes,
+		        t.status, t.priority, t.task_type, COALESCE(t.notes, ''),
 		        t.started_at, t.completed_at, t.inspected_by, t.inspected_at,
-		        t.estimated_minutes, t.actual_minutes, t.created_by, t.created_at, t.updated_at,
+		        COALESCE(t.estimated_minutes, 0), t.actual_minutes, t.created_by, t.created_at, t.updated_at,
 		        u.unit_number,
 		        COALESCE(usr.first_name || ' ' || usr.last_name, '')
 		 FROM housekeeping_tasks t
