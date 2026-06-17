@@ -88,7 +88,6 @@ func main() {
 
 	// Audit logger
 	auditLog := audit.New(db)
-	_ = auditLog // Used by handlers for recording audit entries
 
 	// Repositories
 	authRepo := authrepo.New(db)
@@ -146,13 +145,13 @@ func main() {
 	opsSvc := opsservice.New(db)
 
 	// Handlers
-	authHandler := handler.New(authSvc, log)
+	authHandler := handler.New(authSvc, log, auditLog)
 	propHandler := prophandler.New(propSvc, log)
 	guestHandler := guesthandler.New(guestSvc, log)
 	resHandler := reshandler.New(resSvc, log)
 	calendarHandler := calendarhandler.New(calendarSvc, log)
-	checkinoutHandler := checkinouthandler.New(checkinoutSvc, log)
-	billingHandler := billinghandler.New(billingSvc, log)
+	checkinoutHandler := checkinouthandler.New(checkinoutSvc, log, auditLog)
+	billingHandler := billinghandler.New(billingSvc, log, auditLog)
 	hkHandler := hkhandler.New(hkSvc, log)
 	laundryHandler := laundryhandler.New(laundrySvc, log)
 	dashboardHandler := dashboardhandler.New(dashboardSvc, log)
@@ -281,6 +280,7 @@ func main() {
 
 			// Operations (Check-in/Check-out)
 			r.Route("/operations", func(r chi.Router) {
+				r.Use(authmiddleware.RequireRole("super_admin", "property_admin", "receptionist"))
 				r.Post("/check-in", checkinoutHandler.CheckIn)
 				r.Post("/check-out", checkinoutHandler.CheckOut)
 				r.Post("/walk-in", checkinoutHandler.WalkIn)

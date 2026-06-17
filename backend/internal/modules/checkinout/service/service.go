@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 
 	"github.com/stayflow/stayflow-track/internal/modules/checkinout/domain"
@@ -57,12 +58,13 @@ func (s *Service) CheckIn(ctx context.Context, tenantID, userID uuid.UUID, input
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					// Log panic but don't crash the process
+					log.Error().Interface("panic", r).Str("reservation_id", input.ReservationID.String()).Msg("panic in check-in notification goroutine")
 				}
 			}()
 			s.notifSvc.SendBookingConfirmation(context.Background(), tenantID,
-				"",                 // phone fetched from guest record
-				info.GuestName, "", // property name
+				info.GuestPhone,
+				info.GuestName,
+				info.PropertyName,
 				info.CheckInDate.Format("02-Jan-2006"),
 				info.CheckOutDate.Format("02-Jan-2006"),
 				info.ID.String(),
@@ -106,7 +108,14 @@ func (s *Service) CheckOut(ctx context.Context, tenantID, userID uuid.UUID, inpu
 	}
 
 	// Auto-create housekeeping task for checkout cleaning
-	go s.repo.CreateCheckoutCleaningTask(context.Background(), tenantID, info.UnitID, info.PropertyID, info.UnitNumber)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Str("unit_id", info.UnitID.String()).Msg("panic in checkout cleaning task goroutine")
+			}
+		}()
+		s.repo.CreateCheckoutCleaningTask(context.Background(), tenantID, info.UnitID, info.PropertyID, info.UnitNumber)
+	}()
 
 	return result, nil
 }

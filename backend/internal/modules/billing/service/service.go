@@ -99,6 +99,11 @@ func (s *Service) ListLineItems(ctx context.Context, folioID, tenantID uuid.UUID
 }
 
 func (s *Service) RecordPayment(ctx context.Context, tenantID, userID uuid.UUID, input RecordPaymentInput) (*domain.Payment, error) {
+	// Validate payment amount is positive
+	if !input.Amount.IsPositive() {
+		return nil, apperrors.BadRequest("payment amount must be positive")
+	}
+
 	// Validate folio exists
 	folio, err := s.repo.GetFolioByID(ctx, input.FolioID, tenantID)
 	if err != nil {
@@ -175,7 +180,7 @@ func (s *Service) GenerateInvoicePDF(ctx context.Context, invoiceID, tenantID uu
 		return "", apperrors.Internal(fmt.Errorf("upload pdf: %w", err))
 	}
 
-	if err := s.repo.UpdateInvoicePDF(ctx, invoiceID, key); err != nil {
+	if err := s.repo.UpdateInvoicePDF(ctx, invoiceID, tenantID, key); err != nil {
 		return "", apperrors.Internal(err)
 	}
 

@@ -129,7 +129,7 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <span>Search...</span>
-          <kbd className="ml-1 px-1 py-0.5 text-[10px] font-medium bg-background border rounded">⌘K</kbd>
+          <kbd className="ml-1 px-1 py-0.5 text-[10px] font-medium bg-background border rounded">{typeof navigator !== 'undefined' && /Mac/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K'}</kbd>
         </button>
 
         {/* Notifications */}

@@ -338,6 +338,11 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, input PasswordResetC
 		return err
 	}
 
+	// Validate password complexity on reset (same rules as registration)
+	if err := validatePasswordComplexity(input.NewPassword); err != nil {
+		return err
+	}
+
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return apperrors.Internal(fmt.Errorf("hash password: %w", err))

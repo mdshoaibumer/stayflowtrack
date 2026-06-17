@@ -62,9 +62,9 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
     }
   };
 
-  // Calculate total
+  // Calculate total using date-only arithmetic (avoids timezone issues with Date.now())
   const nights = form.check_out_date
-    ? Math.max(1, Math.ceil((new Date(form.check_out_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(1, Math.ceil((new Date(form.check_out_date + "T00:00:00").getTime() - new Date(new Date().toISOString().split("T")[0] + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
   const total = nights * form.rate_per_night;
 

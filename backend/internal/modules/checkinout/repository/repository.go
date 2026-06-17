@@ -310,8 +310,8 @@ func (r *Repository) PerformCheckOut(ctx context.Context, tenantID uuid.UUID, in
 
 	// 4. Close folio
 	_, err = tx.Exec(ctx,
-		`UPDATE folios SET status = 'closed', closed_at = NOW() WHERE id = $1`,
-		folioID,
+		`UPDATE folios SET status = 'closed', closed_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+		folioID, tenantID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("close folio: %w", err)
@@ -355,8 +355,8 @@ func (r *Repository) PerformCheckOut(ctx context.Context, tenantID uuid.UUID, in
 		return nil, fmt.Errorf("copy line items: %w", err)
 	}
 
-	// 7. Increment guest stays
-	_, err = tx.Exec(ctx, `UPDATE guests SET total_stays = total_stays + 1 WHERE id = $1`, info.GuestID)
+	// 7. Increment guest stays (with tenant isolation)
+	_, err = tx.Exec(ctx, `UPDATE guests SET total_stays = total_stays + 1 WHERE id = $1 AND tenant_id = $2`, info.GuestID, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("increment guest stays: %w", err)
 	}
@@ -405,16 +405,24 @@ func (r *Repository) PerformWalkIn(ctx context.Context, tenantID, userID uuid.UU
 		return nil, apperrors.BadRequest("unit is not available for walk-in")
 	}
 
-	// 2. Create guest
+	// 2. Create guest (or find existing by phone within the same tenant)
 	var guestID uuid.UUID
-	err = tx.QueryRow(ctx,
-		`INSERT INTO guests (tenant_id, first_name, last_name, phone, email, id_type, id_number)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		tenantID, input.GuestFirstName, input.GuestLastName, input.GuestPhone,
-		input.GuestEmail, input.IDDocumentType, input.IDDocumentNumber,
-	).Scan(&guestID)
-	if err != nil {
-		return nil, fmt.Errorf("create guest: %w", err)
+	if input.GuestPhone != "" {
+		err = tx.QueryRow(ctx,
+			`SELECT id FROM guests WHERE tenant_id = $1 AND phone = $2 LIMIT 1`,
+			tenantID, input.GuestPhone,
+		).Scan(&guestID)
+	}
+	if guestID == uuid.Nil {
+		err = tx.QueryRow(ctx,
+			`INSERT INTO guests (tenant_id, first_name, last_name, phone, email, id_type, id_number)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			tenantID, input.GuestFirstName, input.GuestLastName, input.GuestPhone,
+			input.GuestEmail, input.IDDocumentType, input.IDDocumentNumber,
+		).Scan(&guestID)
+		if err != nil {
+			return nil, fmt.Errorf("create guest: %w", err)
+		}
 	}
 
 	// 3. Calculate stay

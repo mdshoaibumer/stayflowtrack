@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import HousekeepingBoard from "@/components/housekeeping/HousekeepingBoard";
@@ -52,9 +52,13 @@ export default function HousekeepingPage() {
 }
 
 function CreateTaskModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (data: any) => Promise<void> }) {
+  const { user } = useAuth();
+  const api = useApi();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [units, setUnits] = useState<any[]>([]);
   const [form, setForm] = useState({
+    unit_id: "",
     unit_number: "",
     task_type: "checkout_clean",
     priority: "normal",
@@ -63,13 +67,24 @@ function CreateTaskModal({ onClose, onSubmit }: { onClose: () => void; onSubmit:
     estimated_minutes: 30,
   });
 
+  // Fetch units for the property to allow selection by ID
+  useEffect(() => {
+    if (!user?.property_id) return;
+    api.get<any>(`/api/v1/properties/${user.property_id}/units`)
+      .then((data: any) => {
+        const list = Array.isArray(data) ? data : data?.data || [];
+        setUnits(list);
+      })
+      .catch(() => {});
+  }, [api, user?.property_id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.unit_number) { setError("Unit number is required"); return; }
+    if (!form.unit_id) { setError("Please select a unit"); return; }
     setLoading(true);
     setError(null);
     try {
-      await onSubmit(form);
+      await onSubmit({ ...form });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create task");
     } finally {
@@ -95,8 +110,16 @@ function CreateTaskModal({ onClose, onSubmit }: { onClose: () => void; onSubmit:
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Unit Number *</label>
-              <input type="text" required value={form.unit_number} onChange={(e) => update("unit_number", e.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors" placeholder="e.g. 101" />
+              <label className="block text-sm font-medium text-gray-700">Unit *</label>
+              <select required value={form.unit_id} onChange={(e) => {
+                const selected = units.find((u: any) => u.id === e.target.value);
+                setForm(f => ({ ...f, unit_id: e.target.value, unit_number: selected?.unit_number || "" }));
+              }} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
+                <option value="">Select a unit...</option>
+                {units.map((u: any) => (
+                  <option key={u.id} value={u.id}>{u.unit_number} — {u.status || "available"}</option>
+                ))}
+              </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

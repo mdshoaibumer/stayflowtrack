@@ -201,7 +201,22 @@ function CreateGuestModal({ onClose, onCreated }: { onClose: () => void; onCreat
     setLoading(true);
     setError(null);
     try {
-      await api.post("/api/v1/guests", form);
+      // Backend expects first_name + last_name, split from full_name
+      const nameParts = form.full_name.trim().split(/\s+/);
+      const payload: Record<string, string> = {
+        first_name: nameParts[0] || "",
+        last_name: nameParts.slice(1).join(" ") || "",
+        email: form.email,
+        phone: form.phone,
+        nationality: form.nationality,
+      };
+      if (form.id_type) {
+        if (form.id_type === "aadhaar") payload.aadhaar_number = form.id_number;
+        else if (form.id_type === "passport") payload.passport_number = form.id_number;
+      }
+      if (form.company_name) payload.company_name = form.company_name;
+      if (form.gstin) payload.gstin = form.gstin;
+      await api.post("/api/v1/guests", payload);
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create guest");
@@ -326,7 +341,7 @@ function GuestDetailDrawer({ guest, onClose, onUpdated }: { guest: Guest; onClos
             <div className="border-t pt-4 space-y-3">
               <InfoRow label="Phone" value={guest.phone} />
               <InfoRow label="Email" value={guest.email} />
-              <InfoRow label="ID Type" value={guest.id_type?.replace("_", " ")} />
+              <InfoRow label="ID Type" value={guest.id_type?.replaceAll("_", " ")} />
               <InfoRow label="ID Number" value={guest.id_number} />
               <InfoRow label="Nationality" value={guest.nationality} />
               <InfoRow label="Added" value={guest.created_at ? new Date(guest.created_at).toLocaleDateString() : ""} />

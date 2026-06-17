@@ -57,6 +57,15 @@ func (s *Service) MoveBooking(ctx context.Context, tenantID uuid.UUID, input dom
 		return apperrors.BadRequest("new_check_out must be after new_check_in")
 	}
 
+	// Validate reservation status — only pending or confirmed reservations can be moved
+	status, err := s.repo.GetReservationStatus(ctx, tenantID, input.ReservationID)
+	if err != nil {
+		return err
+	}
+	if status != "pending" && status != "confirmed" {
+		return apperrors.BadRequest("only pending or confirmed reservations can be moved on the calendar")
+	}
+
 	return s.repo.MoveReservation(ctx, tenantID, input.ReservationID, input.NewUnitID, newCheckIn, newCheckOut)
 }
 

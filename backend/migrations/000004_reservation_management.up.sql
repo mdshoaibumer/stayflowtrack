@@ -7,7 +7,7 @@ CREATE TABLE reservations (
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     unit_id UUID NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
     guest_id UUID NOT NULL REFERENCES guests(id) ON DELETE RESTRICT,
-    booking_source VARCHAR(30) NOT NULL DEFAULT 'walk_in' CHECK (booking_source IN ('walk_in', 'phone', 'whatsapp', 'booking_com', 'airbnb', 'other')),
+    booking_source VARCHAR(30) NOT NULL DEFAULT 'walk_in' CHECK (booking_source IN ('walk_in', 'phone', 'whatsapp', 'email', 'website', 'booking_com', 'airbnb', 'ota_makemytrip', 'ota_goibibo', 'ota_other', 'referral', 'corporate', 'repeat', 'other')),
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled')),
     check_in_date DATE NOT NULL,
     check_out_date DATE NOT NULL,

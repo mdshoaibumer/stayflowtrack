@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useApi } from "@/hooks/useApi";
 
 // Types
 interface CalendarUnit {
@@ -94,6 +95,7 @@ export default function ReservationCalendar({
   onCellClick,
   onEntryClick,
 }: ReservationCalendarProps) {
+  const api = useApi();
   const [startDate, setStartDate] = useState<Date>(
     initialDate ? new Date(initialDate) : new Date()
   );
@@ -117,22 +119,15 @@ export default function ReservationCalendar({
     const end = formatDate(dates[dates.length - 1]);
 
     try {
-      const [calResp, occResp] = await Promise.all([
-        fetch(`/api/v1/calendar/${propertyId}?start=${start}&end=${end}`, {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        }),
-        fetch(`/api/v1/calendar/${propertyId}/occupancy?date=${start}`, {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        }),
+      const [calData, occData] = await Promise.all([
+        api.get<any>(`/api/v1/calendar/${propertyId}`, { start, end }),
+        api.get<any>(`/api/v1/calendar/${propertyId}/occupancy`, { date: start }).catch(() => null),
       ]);
 
-      if (!calResp.ok) throw new Error("Failed to load calendar");
-      const calData = await calResp.json();
-      setCalendarData(calData.data);
+      setCalendarData(calData);
 
-      if (occResp.ok) {
-        const occData = await occResp.json();
-        setOccupancy(occData.data);
+      if (occData) {
+        setOccupancy(occData);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -152,21 +147,21 @@ export default function ReservationCalendar({
     setStartDate(newDate);
   };
 
-  // Find entries for a unit on a date
+  // Find entries for a unit on a date (exclude cancelled/checked_out)
   const getEntryForCell = (unitId: string, date: string): CalendarEntry | null => {
     if (!calendarData) return null;
     return (
       calendarData.entries.find(
-        (e) => e.unit_id === unitId && date >= e.check_in_date && date < e.check_out_date
+        (e) => e.unit_id === unitId && date >= e.check_in_date && date < e.check_out_date && e.status !== "cancelled" && e.status !== "checked_out"
       ) || null
     );
   };
 
-  // Check if date is start of entry
+  // Check if date is start of entry (exclude cancelled)
   const isEntryStart = (unitId: string, date: string): boolean => {
     if (!calendarData) return false;
     return calendarData.entries.some(
-      (e) => e.unit_id === unitId && e.check_in_date === date
+      (e) => e.unit_id === unitId && e.check_in_date === date && e.status !== "cancelled" && e.status !== "checked_out"
     );
   };
 
@@ -367,17 +362,10 @@ export default function ReservationCalendar({
         {Object.entries(statusColors).map(([status, color]) => (
           <div key={status} className="flex items-center gap-1">
             <div className={`w-3 h-3 rounded-sm ${color}`}></div>
-            <span className="capitalize">{status.replace("_", " ")}</span>
+            <span className="capitalize">{status.replaceAll("_", " ")}</span>
           </div>
         ))}
       </div>
     </div>
   );
-}
-
-function getToken(): string {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("access_token") || "";
-  }
-  return "";
 }

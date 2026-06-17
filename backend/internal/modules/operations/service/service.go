@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -118,7 +119,10 @@ func (s *Service) ExtendStay(ctx context.Context, tenantID, userID uuid.UUID, in
 	if rate.IsZero() {
 		rate = ratePerNight
 	}
-	additionalNights := int(newCheckOut.Sub(currentCheckOut).Hours() / 24)
+	additionalNights := int(math.Ceil(newCheckOut.Sub(currentCheckOut).Hours() / 24))
+	if additionalNights < 1 {
+		additionalNights = 1
+	}
 	additionalAmount := decimal.NewFromInt(int64(additionalNights)).Mul(rate)
 
 	// Update reservation
@@ -162,16 +166,23 @@ func (s *Service) ExtendStay(ctx context.Context, tenantID, userID uuid.UUID, in
 		input.ReservationID, tenantID,
 	).Scan(&folioID)
 	if err == nil {
-		// Calculate tax (18% GST on room charges)
-		taxRate := decimal.NewFromInt(18)
+		// Calculate tax using tiered GST rates based on room rate
+		var taxRate decimal.Decimal
+		if rate.LessThan(decimal.NewFromInt(1000)) {
+			taxRate = decimal.Zero
+		} else if rate.LessThan(decimal.NewFromInt(7500)) {
+			taxRate = decimal.NewFromInt(12)
+		} else {
+			taxRate = decimal.NewFromInt(18)
+		}
 		taxAmount := additionalAmount.Mul(taxRate).Div(decimal.NewFromInt(100)).Round(2)
 		totalWithTax := additionalAmount.Add(taxAmount)
 
 		description := fmt.Sprintf("Stay extension: %d additional night(s) @ ₹%s/night", additionalNights, rate.StringFixed(0))
 		_, err = tx.Exec(ctx,
-			`INSERT INTO folio_line_items (tenant_id, folio_id, category, description, quantity, unit_price, tax_rate, tax_amount, amount, date, created_by)
-			 VALUES ($1, $2, 'room_charge', $3, $4, $5, $6, $7, $8, NOW(), $9)`,
-			tenantID, folioID, description, additionalNights, rate, taxRate, taxAmount, totalWithTax, userID,
+			`INSERT INTO line_items (tenant_id, folio_id, category, description, quantity, unit_price, tax_rate, tax_amount, total, amount, date, created_by)
+			 VALUES ($1, $2, 'room_charge', $3, $4, $5, $6, $7, $8, $9, NOW(), $10)`,
+			tenantID, folioID, description, additionalNights, rate, taxRate, taxAmount, totalWithTax, additionalAmount, userID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("post extension charge to folio: %w", err)
@@ -180,9 +191,12 @@ func (s *Service) ExtendStay(ctx context.Context, tenantID, userID uuid.UUID, in
 		// Recalculate folio totals
 		_, err = tx.Exec(ctx,
 			`UPDATE folios SET
-				total_charges = (SELECT COALESCE(SUM(amount), 0) FROM folio_line_items WHERE folio_id = $1 AND voided = false),
-				balance = (SELECT COALESCE(SUM(amount), 0) FROM folio_line_items WHERE folio_id = $1 AND voided = false) -
-						  (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE folio_id = $1),
+				subtotal = (SELECT COALESCE(SUM(amount), 0) FROM line_items WHERE folio_id = $1 AND is_void = false),
+				tax_total = (SELECT COALESCE(SUM(tax_amount), 0) FROM line_items WHERE folio_id = $1 AND is_void = false),
+				total_amount = (SELECT COALESCE(SUM(amount), 0) + COALESCE(SUM(tax_amount), 0) FROM line_items WHERE folio_id = $1 AND is_void = false),
+				paid_amount = (SELECT COALESCE(SUM(CASE WHEN payment_type IN ('payment', 'deposit') THEN amount ELSE -amount END), 0) FROM payments WHERE folio_id = $1),
+				balance = (SELECT COALESCE(SUM(amount), 0) + COALESCE(SUM(tax_amount), 0) FROM line_items WHERE folio_id = $1 AND is_void = false) -
+						  (SELECT COALESCE(SUM(CASE WHEN payment_type IN ('payment', 'deposit') THEN amount ELSE -amount END), 0) FROM payments WHERE folio_id = $1),
 				updated_at = NOW()
 			 WHERE id = $1`,
 			folioID,
@@ -227,6 +241,24 @@ func (s *Service) MoveRoom(ctx context.Context, tenantID, userID uuid.UUID, inpu
 	).Scan(&newUnitAvailable)
 	if err != nil || !newUnitAvailable {
 		return nil, apperrors.BadRequest("target unit is not available")
+	}
+
+	// Check for future reservation conflicts on the target unit
+	var hasConflict bool
+	err = tx.QueryRow(ctx,
+		`SELECT EXISTS(
+			SELECT 1 FROM reservations
+			WHERE unit_id = $1 AND tenant_id = $2 AND id != $3
+			  AND status NOT IN ('cancelled', 'checked_out')
+			  AND check_in_date < $4 AND check_out_date > NOW()
+		)`,
+		input.ToUnitID, tenantID, input.ReservationID, checkOut,
+	).Scan(&hasConflict)
+	if err != nil {
+		return nil, fmt.Errorf("check target unit conflicts: %w", err)
+	}
+	if hasConflict {
+		return nil, apperrors.Conflict("target unit has conflicting reservations during the stay period")
 	}
 
 	// Update reservation to new unit
@@ -343,6 +375,24 @@ func (s *Service) CreateMaintenanceBlock(ctx context.Context, tenantID, userID u
 
 // RefundDeposit processes a deposit refund during check-out.
 func (s *Service) RefundDeposit(ctx context.Context, tenantID, userID uuid.UUID, input domain.RefundDepositInput) error {
+	// Validate refund amount is positive
+	if input.RefundAmount.LessThanOrEqual(decimal.Zero) {
+		return apperrors.BadRequest("refund amount must be positive")
+	}
+
+	// Validate refund amount does not exceed the held deposit
+	var depositAmount decimal.Decimal
+	err := s.pool.QueryRow(ctx,
+		`SELECT amount FROM deposits WHERE id = $1 AND tenant_id = $2 AND status = 'held'`,
+		input.DepositID, tenantID,
+	).Scan(&depositAmount)
+	if err != nil {
+		return apperrors.BadRequest("deposit not found or already processed")
+	}
+	if input.RefundAmount.GreaterThan(depositAmount) {
+		return apperrors.BadRequest("refund amount cannot exceed the held deposit amount")
+	}
+
 	result, err := s.pool.Exec(ctx,
 		`UPDATE deposits SET
 			status = 'refunded',

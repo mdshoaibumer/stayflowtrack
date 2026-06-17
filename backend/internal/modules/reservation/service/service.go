@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 
 	notifservice "github.com/stayflow/stayflow-track/internal/modules/notifications/service"
@@ -87,15 +88,6 @@ func (s *Service) CreateReservation(ctx context.Context, tenantID uuid.UUID, inp
 		return nil, apperrors.BadRequest("unit does not belong to the specified property")
 	}
 
-	// Check for conflicts
-	hasConflict, err := s.repo.CheckConflict(ctx, input.UnitID, checkIn, checkOut, nil)
-	if err != nil {
-		return nil, apperrors.Internal(err)
-	}
-	if hasConflict {
-		return nil, apperrors.Conflict("unit is not available for the selected dates")
-	}
-
 	// Calculate total amount using decimal precision
 	nights := int(math.Ceil(checkOut.Sub(checkIn).Hours() / 24))
 	totalAmount := decimal.NewFromInt(int64(nights)).Mul(input.RatePerNight)
@@ -119,28 +111,39 @@ func (s *Service) CreateReservation(ctx context.Context, tenantID uuid.UUID, inp
 		ExternalBookingID: input.ExternalBookingID,
 	}
 
-	if err := s.repo.CreateReservation(ctx, res); err != nil {
-		return nil, apperrors.Internal(err)
+	// Atomic conflict check + insert within a single transaction to prevent double-booking
+	if err := s.repo.CreateReservationAtomic(ctx, res); err != nil {
+		return nil, err
 	}
 
-	// Update unit status to reserved
-	_ = s.repo.UpdateUnitStatus(ctx, input.UnitID, "reserved")
+	// Update unit status to reserved (with tenant isolation, log errors)
+	if err := s.repo.UpdateUnitStatusWithTenant(ctx, input.UnitID, tenantID, "reserved"); err != nil {
+		// Log but don't fail the reservation — unit status is secondary
+		log.Warn().Err(err).Str("unit_id", input.UnitID.String()).Msg("failed to update unit status to reserved")
+	}
 
 	// Send booking confirmation notification (async, non-blocking)
 	if s.notifSvc != nil {
+		resID := res.ID
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
 					// Log panic but don't crash the process
 				}
 			}()
+			// Look up full reservation data with joined guest/property fields
+			full, err := s.repo.GetReservationByID(context.Background(), resID, tenantID)
+			if err != nil {
+				return
+			}
+			guestName := (full.GuestFirstName + " " + full.GuestLastName)
 			s.notifSvc.SendBookingConfirmation(context.Background(), tenantID,
-				"", // phone will be looked up from guest
-				"", // guest name
-				"", // property name
+				full.GuestPhone,
+				guestName,
+				full.PropertyName,
 				input.CheckInDate,
 				input.CheckOutDate,
-				res.ID.String(),
+				resID.String(),
 			)
 		}()
 	}
@@ -187,9 +190,9 @@ func (s *Service) UpdateReservation(ctx context.Context, id, tenantID uuid.UUID,
 		return nil, apperrors.BadRequest("check_out_date must be after check_in_date")
 	}
 
-	// Check conflicts if dates changed
+	// Check conflicts if dates changed (atomic with update to prevent TOCTOU race)
 	if checkIn != existing.CheckInDate || checkOut != existing.CheckOutDate {
-		hasConflict, err := s.repo.CheckConflict(ctx, existing.UnitID, checkIn, checkOut, &id)
+		hasConflict, err := s.repo.CheckConflictForUpdate(ctx, existing.UnitID, checkIn, checkOut, &id, tenantID)
 		if err != nil {
 			return nil, apperrors.Internal(err)
 		}
@@ -208,6 +211,11 @@ func (s *Service) UpdateReservation(ctx context.Context, id, tenantID uuid.UUID,
 		numGuests = input.NumGuests
 	}
 
+	notes := existing.Notes
+	if input.Notes != "" {
+		notes = input.Notes
+	}
+
 	nights := int(math.Ceil(checkOut.Sub(checkIn).Hours() / 24))
 	totalAmount := decimal.NewFromInt(int64(nights)).Mul(ratePerNight)
 
@@ -219,7 +227,7 @@ func (s *Service) UpdateReservation(ctx context.Context, id, tenantID uuid.UUID,
 		NumGuests:    numGuests,
 		RatePerNight: ratePerNight,
 		TotalAmount:  totalAmount,
-		Notes:        input.Notes,
+		Notes:        notes,
 	}
 
 	if err := s.repo.UpdateReservation(ctx, res); err != nil {
@@ -243,8 +251,10 @@ func (s *Service) CancelReservation(ctx context.Context, id, tenantID uuid.UUID,
 		return err
 	}
 
-	// Release the unit
-	_ = s.repo.UpdateUnitStatus(ctx, existing.UnitID, "available")
+	// Release the unit (with tenant isolation)
+	if err := s.repo.UpdateUnitStatusWithTenant(ctx, existing.UnitID, tenantID, "available"); err != nil {
+		log.Warn().Err(err).Str("unit_id", existing.UnitID.String()).Str("reservation_id", id.String()).Msg("failed to update unit status to available on cancel")
+	}
 
 	return nil
 }
@@ -277,8 +287,10 @@ func (s *Service) CheckIn(ctx context.Context, id, tenantID uuid.UUID) error {
 		return err
 	}
 
-	// Update unit status to occupied
-	_ = s.repo.UpdateUnitStatus(ctx, existing.UnitID, "occupied")
+	// Update unit status to occupied (with tenant isolation)
+	if err := s.repo.UpdateUnitStatusWithTenant(ctx, existing.UnitID, tenantID, "occupied"); err != nil {
+		log.Warn().Err(err).Str("unit_id", existing.UnitID.String()).Str("reservation_id", id.String()).Msg("failed to update unit status to occupied on check-in")
+	}
 
 	return nil
 }
@@ -297,11 +309,13 @@ func (s *Service) CheckOut(ctx context.Context, id, tenantID uuid.UUID) error {
 		return err
 	}
 
-	// Update unit status to cleaning after checkout
-	_ = s.repo.UpdateUnitStatus(ctx, existing.UnitID, "cleaning")
+	// Update unit status to cleaning after checkout (with tenant isolation)
+	if err := s.repo.UpdateUnitStatusWithTenant(ctx, existing.UnitID, tenantID, "cleaning"); err != nil {
+		log.Warn().Err(err).Str("unit_id", existing.UnitID.String()).Str("reservation_id", id.String()).Msg("failed to update unit status to cleaning on checkout")
+	}
 
-	// Increment guest stay count
-	_ = s.repo.IncrementGuestStays(ctx, existing.GuestID)
+	// Note: guest stay count is incremented in the checkinout module's PerformCheckOut transaction.
+	// Do NOT increment here to avoid double-counting.
 
 	return nil
 }

@@ -24,7 +24,7 @@ func (s *Service) CreateOrder(ctx context.Context, tenantID, userID uuid.UUID, i
 	items := make([]domain.LaundryItem, 0, len(input.Items))
 
 	for _, ii := range input.Items {
-		unitPrice := decimal.NewFromFloat(ii.UnitPrice)
+		unitPrice := decimal.NewFromFloatWithExponent(ii.UnitPrice, -2)
 		amount := decimal.NewFromInt(int64(ii.Quantity)).Mul(unitPrice)
 		totalItems += ii.Quantity
 		totalAmount = totalAmount.Add(amount)

@@ -115,10 +115,19 @@ type cacheEntry struct {
 }
 
 func newCache(ttl time.Duration) *dashboardCache {
-	return &dashboardCache{
+	c := &dashboardCache{
 		items: make(map[string]*cacheEntry),
 		ttl:   ttl,
 	}
+	// Periodic cleanup of expired entries to prevent unbounded memory growth
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			c.evictExpired()
+		}
+	}()
+	return c
 }
 
 func (c *dashboardCache) get(key string) (*domain.DashboardMetrics, bool) {
@@ -137,5 +146,16 @@ func (c *dashboardCache) set(key string, data *domain.DashboardMetrics) {
 	c.items[key] = &cacheEntry{
 		data:      data,
 		expiresAt: time.Now().Add(c.ttl),
+	}
+}
+
+func (c *dashboardCache) evictExpired() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := time.Now()
+	for key, entry := range c.items {
+		if now.After(entry.expiresAt) {
+			delete(c.items, key)
+		}
 	}
 }

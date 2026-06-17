@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import ReservationCalendar from "@/components/calendar/ReservationCalendar";
 
 interface Reservation {
@@ -160,7 +161,7 @@ function ReservationsContent() {
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm">{r.guest_name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[r.status] || "bg-gray-100"}`}>
-                        {r.status?.replace("_", " ")}
+                        {r.status?.replaceAll("_", " ")}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -190,10 +191,10 @@ function ReservationsContent() {
                       <td className="px-4 py-3">{r.check_out_date}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[r.status] || "bg-gray-100"}`}>
-                          {r.status?.replace("_", " ")}
+                          {r.status?.replaceAll("_", " ")}
                         </span>
                       </td>
-                      <td className="px-4 py-3">₹{r.total_amount?.toLocaleString() || "0"}</td>
+                      <td className="px-4 py-3">₹{(r.total_amount ?? 0).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -424,8 +425,8 @@ function NewBookingModal({ propertyId, onClose, onCreated }: { propertyId: strin
               {ratePerNight > 0 && (
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <div className="flex justify-between text-sm"><span>Room Charges</span><span>₹{(ratePerNight * nights).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-sm text-gray-500"><span>GST (12%)</span><span>₹{Math.round(ratePerNight * nights * 0.12).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-sm font-bold border-t pt-1 mt-1"><span>Estimated Total</span><span>₹{Math.round(ratePerNight * nights * 1.12).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm text-gray-500"><span>GST ({ratePerNight < 1000 ? '0' : ratePerNight < 7500 ? '12' : '18'}%)</span><span>₹{Math.round(ratePerNight * nights * (ratePerNight < 1000 ? 0 : ratePerNight < 7500 ? 0.12 : 0.18)).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm font-bold border-t pt-1 mt-1"><span>Estimated Total</span><span>₹{Math.round(ratePerNight * nights * (1 + (ratePerNight < 1000 ? 0 : ratePerNight < 7500 ? 0.12 : 0.18))).toLocaleString()}</span></div>
                 </div>
               )}
               <div>
@@ -483,7 +484,9 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
       await api.post(`/api/v1/reservations/${reservation.id}/cancel`, { reason: "Cancelled by staff" });
       onUpdated();
       onClose();
-    } catch { /* silent */ }
+    } catch (err) {
+      // Error handled by useApi (401 logout), other errors show in console
+    }
     finally { setLoading(false); }
   };
 
@@ -493,7 +496,9 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
       await api.post(`/api/v1/reservations/${reservation.id}/confirm`);
       onUpdated();
       onClose();
-    } catch { /* silent */ }
+    } catch (err) {
+      // Error handled by useApi (401 logout)
+    }
     finally { setLoading(false); }
   };
 
@@ -513,9 +518,9 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
             <div className="flex justify-between"><span className="text-gray-500">Unit</span><span className="font-medium">{reservation.unit_number}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Check-in</span><span>{reservation.check_in_date}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Check-out</span><span>{reservation.check_out_date}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Status</span><span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[reservation.status]}`}>{reservation.status?.replace("_", " ")}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Status</span><span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[reservation.status]}`}>{reservation.status?.replaceAll("_", " ")}</span></div>
             {reservation.total_amount > 0 && (
-              <div className="flex justify-between"><span className="text-gray-500">Amount</span><span className="font-medium">₹{reservation.total_amount?.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Amount</span><span className="font-medium">₹{(reservation.total_amount ?? 0).toLocaleString()}</span></div>
             )}
           </div>
 
@@ -528,18 +533,18 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
             )}
             {(reservation.status === "confirmed" || reservation.status === "pending") && (
               <>
-                <a href={`/operations?tab=checkin&reservation=${reservation.id}`} className="block w-full text-center py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">
+                <Link href={`/operations?tab=checkin&reservation=${reservation.id}`} className="block w-full text-center py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">
                   Check In
-                </a>
+                </Link>
                 <button onClick={() => setShowCancel(true)} className="w-full py-2 text-sm border border-red-300 text-red-600 rounded-md hover:bg-red-50">
                   Cancel Reservation
                 </button>
               </>
             )}
             {reservation.status === "checked_in" && (
-              <a href={`/operations?tab=checkout&reservation=${reservation.id}`} className="block w-full text-center py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700">
+              <Link href={`/operations?tab=checkout&reservation=${reservation.id}`} className="block w-full text-center py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700">
                 Check Out
-              </a>
+              </Link>
             )}
           </div>
 

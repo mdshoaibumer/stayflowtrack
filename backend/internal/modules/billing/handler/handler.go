@@ -10,6 +10,7 @@ import (
 
 	"github.com/stayflow/stayflow-track/internal/modules/auth/middleware"
 	"github.com/stayflow/stayflow-track/internal/modules/billing/service"
+	"github.com/stayflow/stayflow-track/internal/shared/audit"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
 	"github.com/stayflow/stayflow-track/internal/shared/pagination"
 	"github.com/stayflow/stayflow-track/internal/shared/response"
@@ -17,12 +18,13 @@ import (
 )
 
 type Handler struct {
-	service *service.Service
-	log     zerolog.Logger
+	service  *service.Service
+	log      zerolog.Logger
+	auditLog *audit.Logger
 }
 
-func New(svc *service.Service, log zerolog.Logger) *Handler {
-	return &Handler{service: svc, log: log}
+func New(svc *service.Service, log zerolog.Logger, auditLog *audit.Logger) *Handler {
+	return &Handler{service: svc, log: log, auditLog: auditLog}
 }
 
 func (h *Handler) GetFolio(w http.ResponseWriter, r *http.Request) {
@@ -159,6 +161,20 @@ func (h *Handler) RecordPayment(w http.ResponseWriter, r *http.Request) {
 		response.Err(w, err)
 		return
 	}
+
+	// Audit log: payment
+	ip, ua := audit.FromRequest(r)
+	h.auditLog.Log(r.Context(), audit.Entry{
+		TenantID:   claims.TenantID,
+		UserID:     claims.UserID,
+		Action:     audit.ActionPayment,
+		EntityType: "payment",
+		EntityID:   payment.ID,
+		NewValues:  map[string]any{"folio_id": input.FolioID, "amount": input.Amount.String(), "method": input.PaymentMethod, "type": input.PaymentType},
+		IPAddress:  ip,
+		UserAgent:  ua,
+	})
+	h.log.Info().Str("payment_id", payment.ID.String()).Str("amount", input.Amount.String()).Str("method", input.PaymentMethod).Msg("payment recorded")
 
 	response.JSON(w, http.StatusCreated, payment)
 }

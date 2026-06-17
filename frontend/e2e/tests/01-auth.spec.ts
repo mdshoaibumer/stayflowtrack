@@ -87,8 +87,11 @@ test.describe("Authentication", () => {
     test("should navigate to login page from register", async ({ page }) => {
       const registerPage = new RegisterPage(page);
       await registerPage.goto();
-      await registerPage.loginLink.click();
-      await expect(page).toHaveURL(/login/);
+      // Click the "Sign In" link that goes to /login
+      const loginLink = page.locator('a[href="/login"]').first();
+      await loginLink.waitFor({ state: "visible", timeout: 10000 });
+      await loginLink.click();
+      await expect(page).toHaveURL(/login/, { timeout: 15000 });
     });
   });
 

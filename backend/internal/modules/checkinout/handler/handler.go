@@ -10,18 +10,20 @@ import (
 	"github.com/stayflow/stayflow-track/internal/modules/auth/middleware"
 	"github.com/stayflow/stayflow-track/internal/modules/checkinout/domain"
 	"github.com/stayflow/stayflow-track/internal/modules/checkinout/service"
+	"github.com/stayflow/stayflow-track/internal/shared/audit"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
 	"github.com/stayflow/stayflow-track/internal/shared/response"
 	"github.com/stayflow/stayflow-track/internal/shared/validation"
 )
 
 type Handler struct {
-	service *service.Service
-	log     zerolog.Logger
+	service  *service.Service
+	log      zerolog.Logger
+	auditLog *audit.Logger
 }
 
-func New(svc *service.Service, log zerolog.Logger) *Handler {
-	return &Handler{service: svc, log: log}
+func New(svc *service.Service, log zerolog.Logger, auditLog *audit.Logger) *Handler {
+	return &Handler{service: svc, log: log, auditLog: auditLog}
 }
 
 func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +46,20 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 		response.Err(w, err)
 		return
 	}
+
+	// Audit log: check-in
+	ip, ua := audit.FromRequest(r)
+	h.auditLog.Log(r.Context(), audit.Entry{
+		TenantID:   claims.TenantID,
+		UserID:     claims.UserID,
+		Action:     audit.ActionCheckIn,
+		EntityType: "reservation",
+		EntityID:   input.ReservationID,
+		NewValues:  map[string]any{"folio_id": result.FolioID, "unit_id": input.AssignedUnitID},
+		IPAddress:  ip,
+		UserAgent:  ua,
+	})
+	h.log.Info().Str("reservation_id", input.ReservationID.String()).Str("user_id", claims.UserID.String()).Msg("check-in completed")
 
 	response.JSON(w, http.StatusOK, result)
 }
@@ -69,6 +85,20 @@ func (h *Handler) CheckOut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Audit log: check-out
+	ip, ua := audit.FromRequest(r)
+	h.auditLog.Log(r.Context(), audit.Entry{
+		TenantID:   claims.TenantID,
+		UserID:     claims.UserID,
+		Action:     audit.ActionCheckOut,
+		EntityType: "reservation",
+		EntityID:   input.ReservationID,
+		NewValues:  map[string]any{"invoice_id": result.InvoiceID, "balance": result.Balance.String()},
+		IPAddress:  ip,
+		UserAgent:  ua,
+	})
+	h.log.Info().Str("reservation_id", input.ReservationID.String()).Str("user_id", claims.UserID.String()).Msg("check-out completed")
+
 	response.JSON(w, http.StatusOK, result)
 }
 
@@ -93,6 +123,20 @@ func (h *Handler) WalkIn(w http.ResponseWriter, r *http.Request) {
 		response.Err(w, err)
 		return
 	}
+
+	// Audit log: walk-in
+	ip, ua := audit.FromRequest(r)
+	h.auditLog.Log(r.Context(), audit.Entry{
+		TenantID:   claims.TenantID,
+		UserID:     claims.UserID,
+		Action:     audit.ActionCheckIn,
+		EntityType: "reservation",
+		EntityID:   result.ReservationID,
+		NewValues:  map[string]any{"type": "walk_in", "guest_id": result.GuestID, "unit": result.UnitNumber},
+		IPAddress:  ip,
+		UserAgent:  ua,
+	})
+	h.log.Info().Str("reservation_id", result.ReservationID.String()).Str("guest", result.GuestName).Msg("walk-in completed")
 
 	response.JSON(w, http.StatusCreated, result)
 }

@@ -67,9 +67,9 @@ function PropertySettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
   useEffect(() => {
     if (!user?.property_id) return;
     api.get<any>(`/api/v1/properties/${user.property_id}`).then((data: any) => {
-      if (data) setForm({ ...form, ...data });
+      if (data) setForm((prev) => ({ ...prev, ...data }));
     }).catch(() => {});
-  }, []);
+  }, [api, user?.property_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,20 +216,20 @@ function TeamSettings() {
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("staff");
+  const [inviteRole, setInviteRole] = useState("receptionist");
   const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
     api.get<any>("/api/v1/users", {}).then((data: any) => {
       setMembers(Array.isArray(data) ? data : data?.data || []);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  }, [api]);
 
   const handleInvite = async () => {
     if (!inviteEmail) return;
     setInviteLoading(true);
     try {
-      await api.post("/api/v1/users", { email: inviteEmail, role: inviteRole });
+      await api.post("/api/v1/users", { email: inviteEmail, role_name: inviteRole });
       setShowInvite(false);
       setInviteEmail("");
       // Refresh
@@ -263,9 +263,8 @@ function TeamSettings() {
         <div className="border-t pt-4 space-y-3">
           <input type="email" placeholder="Email address" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
           <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="staff">Staff</option>
+            <option value="property_admin">Property Admin</option>
+            <option value="receptionist">Receptionist</option>
             <option value="housekeeping">Housekeeping</option>
           </select>
           <div className="flex gap-2">

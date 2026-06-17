@@ -107,8 +107,9 @@ function OperationsContent() {
           if (pdfUrl) window.open(pdfUrl, "_blank");
         }
       }
-    } catch { /* silent */ }
-    finally {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate invoice");
+    } finally {
       setGeneratingInvoice(false);
       setLastCheckoutReservationId(null);
       setSuccessMsg(null);
@@ -125,10 +126,12 @@ function OperationsContent() {
     fetchOperations();
   };
 
+  const [showNoShowConfirm, setShowNoShowConfirm] = useState<string | null>(null);
+
   const handleNoShow = async (reservationId: string) => {
-    if (!confirm("Mark this guest as No-Show? This will cancel the reservation.")) return;
     try {
       await api.post("/api/v1/operations/no-show", { reservation_id: reservationId });
+      setShowNoShowConfirm(null);
       setSuccessMsg("Marked as No-Show. Reservation cancelled.");
       setTimeout(() => setSuccessMsg(null), 3000);
       fetchOperations();
@@ -251,7 +254,7 @@ function OperationsContent() {
                 actionColor="bg-green-600 hover:bg-green-700"
                 onAction={() => setActiveCheckin(a)}
                 showNoShow
-                onNoShow={() => handleNoShow(a.reservation_id)}
+                onNoShow={() => setShowNoShowConfirm(a.reservation_id)}
               />
             ))
           )}
@@ -382,6 +385,20 @@ function OperationsContent() {
               onSubmit={handleCheckOut}
               onCancel={() => setActiveCheckout(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* No-Show Confirmation Dialog */}
+      {showNoShowConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold mb-2">Mark as No-Show?</h3>
+            <p className="text-sm text-gray-600 mb-4">This will cancel the reservation. This action cannot be undone.</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowNoShowConfirm(null)} className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50">Cancel</button>
+              <button onClick={() => handleNoShow(showNoShowConfirm)} className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Yes, Mark No-Show</button>
+            </div>
           </div>
         </div>
       )}

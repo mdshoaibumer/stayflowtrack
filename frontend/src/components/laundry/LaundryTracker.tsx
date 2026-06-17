@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useApi } from "@/hooks/useApi";
 
 interface LaundryOrder {
   id: string;
@@ -27,49 +28,45 @@ const statusColors: Record<string, string> = {
   delivered: "bg-purple-200",
 };
 
-function getToken(): string {
-  if (typeof window !== "undefined") return localStorage.getItem("access_token") || "";
-  return "";
-}
-
 export default function LaundryTracker({ propertyId }: LaundryTrackerProps) {
+  const api = useApi();
   const [orders, setOrders] = useState<LaundryOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
 
   const fetchOrders = useCallback(async () => {
-    const params = new URLSearchParams({ property_id: propertyId, per_page: "50" });
-    if (filter) params.set("status", filter);
+    const params: Record<string, string> = { property_id: propertyId, per_page: "50" };
+    if (filter) params.status = filter;
 
-    const resp = await fetch(`/api/v1/laundry/orders?${params}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      setOrders(data.data || []);
+    try {
+      const data = await api.get<any>("/api/v1/laundry/orders", params);
+      setOrders(Array.isArray(data) ? data : data?.data || []);
+    } catch {
+      // Error handled by useApi (401 logout)
     }
     setLoading(false);
-  }, [propertyId, filter]);
+  }, [api, propertyId, filter]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
   const updateStatus = async (orderId: string, status: string) => {
-    await fetch("/api/v1/laundry/orders/status", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ order_id: orderId, status }),
-    });
-    fetchOrders();
+    try {
+      await api.post("/api/v1/laundry/orders/status", { order_id: orderId, status });
+      fetchOrders();
+    } catch {
+      // Error handled by useApi
+    }
   };
 
   const postToFolio = async (orderId: string) => {
-    await fetch(`/api/v1/laundry/orders/${orderId}/post-to-folio`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
-    fetchOrders();
+    try {
+      await api.post(`/api/v1/laundry/orders/${orderId}/post-to-folio`);
+      fetchOrders();
+    } catch {
+      // Error handled by useApi
+    }
   };
 
   if (loading) {
@@ -125,7 +122,7 @@ function OrderCard({ order, onStatusChange, onPostToFolio }: {
         {order.guest_name && <div><span className="text-gray-500">Guest:</span> {order.guest_name}</div>}
         {order.unit_number && <div><span className="text-gray-500">Unit:</span> {order.unit_number}</div>}
         <div><span className="text-gray-500">Items:</span> {order.total_items}</div>
-        <div><span className="text-gray-500">Total:</span> ₹{order.grand_total.toFixed(2)}</div>
+        <div><span className="text-gray-500">Total:</span> ₹{(order.grand_total ?? 0).toFixed(2)}</div>
       </div>
 
       {/* Progress Steps */}

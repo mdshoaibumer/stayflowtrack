@@ -68,6 +68,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFolio, setSelectedFolio] = useState<string | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
   const [tab, setTab] = useState<"active" | "invoices">("active");
   const [showQuickCharge, setShowQuickCharge] = useState(false);
 
@@ -89,9 +90,21 @@ export default function BillingPage() {
     try {
       const data = await api.get<any>("/api/v1/billing/invoices", { property_id: propertyId, per_page: "50" });
       setInvoices(Array.isArray(data) ? data : data?.data || []);
-      // Fetch active (open) folios
-      const folioData = await api.get<any>("/api/v1/billing/invoices", { property_id: propertyId, status: "open", per_page: "50" });
-      setActiveFolios(Array.isArray(folioData) ? folioData : folioData?.data || []);
+      // Fetch active (open) folios from reservations that are checked in
+      try {
+        const resData = await api.get<any>("/api/v1/reservations", { property_id: propertyId, status: "checked_in", per_page: "50" });
+        const reservations = Array.isArray(resData) ? resData : resData?.data || [];
+        const folioPromises = reservations.map(async (r: any) => {
+          try {
+            const folio = await api.get<any>(`/api/v1/billing/folios/reservation/${r.id}`);
+            return folio ? { ...folio, guest_name: r.guest_name, unit_number: r.unit_number } : null;
+          } catch { return null; }
+        });
+        const folios = (await Promise.all(folioPromises)).filter(Boolean);
+        setActiveFolios(folios);
+      } catch {
+        setActiveFolios([]);
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load billing data");
@@ -159,7 +172,7 @@ export default function BillingPage() {
                   </div>
                   <p className="text-sm text-gray-500">{folio.unit_number}</p>
                   <div className="mt-2 text-right">
-                    <span className={`text-lg font-bold ${folio.balance > 0 ? "text-red-600" : "text-green-600"}`}>₹{folio.balance?.toLocaleString()}</span>
+                    <span className={`text-lg font-bold ${(folio.balance ?? 0) > 0 ? "text-red-600" : "text-green-600"}`}>₹{(folio.balance ?? 0).toLocaleString()}</span>
                     <p className="text-xs text-gray-400">balance due</p>
                   </div>
                 </div>
@@ -186,23 +199,23 @@ export default function BillingPage() {
           <div className="space-y-3 lg:hidden">
             {invoices.map((inv) => (
               <div key={inv.id} className="border rounded-lg p-4 bg-white shadow-sm">
-                <div className="flex items-center justify-between mb-2" onClick={() => setSelectedFolio(inv.id)}>
+                <div className="flex items-center justify-between mb-2" onClick={() => setSelectedInvoice(inv.id)}>
                   <span className="font-mono text-xs text-gray-500">{inv.invoice_number}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[inv.status] || "bg-gray-100"}`}>
                     {inv.status}
                   </span>
                 </div>
-                <p className="font-medium" onClick={() => setSelectedFolio(inv.id)}>{inv.guest_name}</p>
+                <p className="font-medium" onClick={() => setSelectedInvoice(inv.id)}>{inv.guest_name}</p>
                 <p className="text-sm text-gray-500">{inv.unit_number}</p>
                 <div className="flex justify-between mt-2 text-sm">
-                  <span className="text-gray-500">Total: ₹{inv.total_amount?.toLocaleString()}</span>
-                  <span className={inv.balance > 0 ? "text-red-600 font-medium" : "text-green-600"}>
-                    Balance: ₹{inv.balance?.toLocaleString()}
+                  <span className="text-gray-500">Total: ₹{(inv.total_amount ?? 0).toLocaleString()}</span>
+                  <span className={(inv.balance ?? 0) > 0 ? "text-red-600 font-medium" : "text-green-600"}>
+                    Balance: ₹{(inv.balance ?? 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex gap-2 mt-2 pt-2 border-t">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setSelectedFolio(inv.id); }}
+                    onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv.id); }}
                     className="flex-1 px-2 py-1.5 text-xs border rounded-md hover:bg-gray-50 text-center"
                   >View Details</button>
                   <InvoicePDFButton invoiceId={inv.id} />
@@ -230,13 +243,13 @@ export default function BillingPage() {
               <tbody className="divide-y">
                 {invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs cursor-pointer" onClick={() => setSelectedFolio(inv.id)}>{inv.invoice_number}</td>
-                    <td className="px-4 py-3 font-medium cursor-pointer" onClick={() => setSelectedFolio(inv.id)}>{inv.guest_name}</td>
-                    <td className="px-4 py-3 cursor-pointer" onClick={() => setSelectedFolio(inv.id)}>{inv.unit_number}</td>
+                    <td className="px-4 py-3 font-mono text-xs cursor-pointer" onClick={() => setSelectedInvoice(inv.id)}>{inv.invoice_number}</td>
+                    <td className="px-4 py-3 font-medium cursor-pointer" onClick={() => setSelectedInvoice(inv.id)}>{inv.guest_name}</td>
+                    <td className="px-4 py-3 cursor-pointer" onClick={() => setSelectedInvoice(inv.id)}>{inv.unit_number}</td>
                     <td className="px-4 py-3 text-right">₹{inv.total_amount?.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right text-green-600">₹{inv.paid_amount?.toLocaleString()}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${inv.balance > 0 ? "text-red-600" : "text-green-600"}`}>
-                      ₹{inv.balance?.toLocaleString()}
+                    <td className={`px-4 py-3 text-right font-medium ${(inv.balance ?? 0) > 0 ? "text-red-600" : "text-green-600"}`}>
+                      ₹{(inv.balance ?? 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[inv.status] || "bg-gray-100"}`}>{inv.status}</span>
@@ -256,6 +269,11 @@ export default function BillingPage() {
       {/* Folio Detail Drawer */}
       {selectedFolio && (
         <FolioDetailDrawer folioId={selectedFolio} onClose={() => setSelectedFolio(null)} onUpdated={fetchData} />
+      )}
+
+      {/* Invoice Detail Drawer */}
+      {selectedInvoice && (
+        <InvoiceDetailDrawer invoiceId={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
       )}
 
       {/* Quick Charge Modal */}
@@ -298,10 +316,10 @@ function FolioDetailDrawer({ folioId, onClose, onUpdated }: { folioId: string; o
     load();
   }, [api, folioId]);
 
-  const addCharge = async (description: string, amount: number) => {
+  const addCharge = async (category: string, description: string, amount: number) => {
     setActionLoading(true);
     try {
-      await api.post("/api/v1/billing/charges", { folio_id: folioId, description, amount });
+      await api.post("/api/v1/billing/charges", { folio_id: folioId, category, description, amount, quantity: 1, unit_price: amount, tax_rate: 18 });
       setShowAddCharge(false);
       setSuccessMsg("Charge added");
       setTimeout(() => setSuccessMsg(null), 2000);
@@ -515,7 +533,7 @@ function FolioDetailDrawer({ folioId, onClose, onUpdated }: { folioId: string; o
   );
 }
 
-function AddChargeForm({ onSubmit, onCancel, loading }: { onSubmit: (desc: string, amount: number) => void; onCancel: () => void; loading: boolean }) {
+function AddChargeForm({ onSubmit, onCancel, loading }: { onSubmit: (category: string, desc: string, amount: number) => void; onCancel: () => void; loading: boolean }) {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState(0);
   const [category, setCategory] = useState("");
@@ -542,7 +560,7 @@ function AddChargeForm({ onSubmit, onCancel, loading }: { onSubmit: (desc: strin
       <input type="number" min="0" step="0.01" placeholder="Amount (₹)" value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} className="w-full rounded-md border px-3 py-2 text-sm" />
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="px-3 py-1.5 text-xs border rounded-md">Cancel</button>
-        <button onClick={() => { if (desc && amount > 0) onSubmit(desc, amount); }} disabled={loading || !category} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md disabled:opacity-50">
+        <button onClick={() => { if (desc && amount > 0 && category) onSubmit(category, desc, amount); }} disabled={loading || !category} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md disabled:opacity-50">
           {loading ? "Adding..." : "Add"}
         </button>
       </div>
@@ -571,6 +589,67 @@ function AddPaymentForm({ onSubmit, onCancel, loading, balance }: { onSubmit: (a
         <button onClick={() => { if (amount > 0) onSubmit(amount, method, reference); }} disabled={loading} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-md disabled:opacity-50">
           {loading ? "Recording..." : "Record"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Invoice Detail Drawer - shows invoice details when clicking on an invoice row
+function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string; onClose: () => void }) {
+  const api = useApi();
+  const [invoice, setInvoice] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await api.get<any>(`/api/v1/billing/invoices/${invoiceId}`);
+        setInvoice(data);
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    };
+    load();
+  }, [api, invoiceId]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
+      <div className="relative bg-white w-full max-w-md h-full overflow-y-auto shadow-xl animate-in slide-in-from-right p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Invoice Details</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        {loading && <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}
+        {!loading && invoice && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-500">Invoice Number</p>
+              <p className="font-mono font-medium">{invoice.invoice_number}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-gray-500">Guest</p><p className="font-medium">{invoice.guest_name}</p></div>
+              <div><p className="text-gray-500">Status</p><p className="font-medium capitalize">{invoice.status}</p></div>
+              <div><p className="text-gray-500">Total</p><p className="font-medium">₹{invoice.total_amount?.toLocaleString()}</p></div>
+              <div><p className="text-gray-500">Balance</p><p className={`font-medium ${(invoice.balance_due ?? 0) > 0 ? "text-red-600" : "text-green-600"}`}>₹{(invoice.balance_due ?? 0).toLocaleString()}</p></div>
+              <div><p className="text-gray-500">Check-in</p><p>{invoice.check_in_date}</p></div>
+              <div><p className="text-gray-500">Check-out</p><p>{invoice.check_out_date}</p></div>
+            </div>
+            {invoice.line_items && invoice.line_items.length > 0 && (
+              <div className="border-t pt-3">
+                <h4 className="text-sm font-medium mb-2">Line Items</h4>
+                <div className="space-y-1">{invoice.line_items.map((item: any, i: number) => (
+                  <div key={i} className="flex justify-between text-sm"><span className="text-gray-600">{item.description}</span><span className="font-medium">₹{item.total?.toLocaleString()}</span></div>
+                ))}</div>
+              </div>
+            )}
+            <div className="border-t pt-3">
+              <InvoicePDFButton invoiceId={invoiceId} />
+            </div>
+          </div>
+        )}
+        {!loading && !invoice && <p className="text-sm text-gray-500">Invoice not found</p>}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useApi } from "@/hooks/useApi";
 
 interface Task {
   id: string;
@@ -39,41 +40,36 @@ const priorityBadge: Record<string, string> = {
   low: "bg-gray-100 text-gray-500",
 };
 
-function getToken(): string {
-  if (typeof window !== "undefined") return localStorage.getItem("access_token") || "";
-  return "";
-}
-
 export default function HousekeepingBoard({ propertyId }: HousekeepingBoardProps) {
+  const api = useApi();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("");
 
   const fetchTasks = useCallback(async () => {
-    const params = new URLSearchParams({ property_id: propertyId, per_page: "100" });
-    if (filter) params.set("status", filter);
+    const params: Record<string, string> = { property_id: propertyId, per_page: "100" };
+    if (filter) params.status = filter;
 
-    const resp = await fetch(`/api/v1/housekeeping/tasks?${params}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      setTasks(data.data || []);
+    try {
+      const data = await api.get<any>("/api/v1/housekeeping/tasks", params);
+      setTasks(Array.isArray(data) ? data : data?.data || []);
+    } catch {
+      // Error handled by useApi (401 logout)
     }
     setLoading(false);
-  }, [propertyId, filter]);
+  }, [api, propertyId, filter]);
 
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
   const updateStatus = async (taskId: string, newStatus: string) => {
-    await fetch("/api/v1/housekeeping/tasks/status", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ task_id: taskId, status: newStatus }),
-    });
-    fetchTasks();
+    try {
+      await api.post("/api/v1/housekeeping/tasks/status", { task_id: taskId, status: newStatus });
+      fetchTasks();
+    } catch {
+      // Error handled by useApi
+    }
   };
 
   if (loading) {
@@ -131,7 +127,7 @@ function TaskCard({ task, onStatusChange, currentStatus }: { task: Task; onStatu
         <span className="font-bold">{task.unit_number}</span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded ${priorityBadge[task.priority]}`}>{task.priority}</span>
       </div>
-      <div className="text-xs text-gray-500 mb-1">{task.task_type.replace("_", " ")}</div>
+      <div className="text-xs text-gray-500 mb-1">{task.task_type.replaceAll("_", " ")}</div>
       {task.assignee_name && <div className="text-xs text-gray-600">👤 {task.assignee_name}</div>}
       {task.notes && <div className="text-xs text-gray-400 mt-1 truncate">{task.notes}</div>}
       {next && (

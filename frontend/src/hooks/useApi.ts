@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -73,5 +73,26 @@ export function useApi() {
     return request<T>(path, { method: "DELETE" });
   }, [request]);
 
-  return { request, get, post, put, patch, del };
+  const upload = useCallback(async <T = unknown>(path: string, formData: FormData): Promise<T> => {
+    const url = `${API_BASE}${path}`;
+    const headers: Record<string, string> = {};
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+    const resp = await fetch(url, { method: "POST", headers, body: formData });
+    if (resp.status === 401) {
+      logout();
+      throw new Error("Session expired. Please login again.");
+    }
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.error?.message || `Upload failed (${resp.status})`);
+    }
+    return data.data ?? data;
+  }, [accessToken, logout]);
+
+  return useMemo(
+    () => ({ request, get, post, put, patch, del, upload }),
+    [request, get, post, put, patch, del, upload]
+  );
 }

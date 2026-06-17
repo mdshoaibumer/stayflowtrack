@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface CheckInFormProps {
   reservationId: string;
   unitId: string;
-  onSubmit: (data: CheckInData) => Promise<void>;
+  onSubmit: (data: CheckInData) => Promise<{ guest_id?: string } | void>;
   onCancel: () => void;
 }
 
@@ -63,7 +63,13 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
     }
     setLoading(true);
     setError(null);
-    try { await onSubmit({ ...form, deposit_amount: waiveDeposit ? 0 : form.deposit_amount }); } catch (err) { setError(err instanceof Error ? err.message : "Check-in failed"); } finally { setLoading(false); }
+    try {
+      const result = await onSubmit({ ...form, deposit_amount: waiveDeposit ? 0 : form.deposit_amount });
+      // Upload ID document photo after successful check-in (non-blocking)
+      if (docFile && result?.guest_id) {
+        handleDocUpload(result.guest_id).catch(() => {});
+      }
+    } catch (err) { setError(err instanceof Error ? err.message : "Check-in failed"); } finally { setLoading(false); }
   };
 
   // Upload document photo after check-in form submission
@@ -74,8 +80,10 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
       const formData = new FormData();
       formData.append("file", docFile);
       formData.append("document_type", form.id_document_type);
-      await fetch(`/api/v1/guests/${guestId}/documents`, {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/guests/${guestId}/documents`, {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
     } catch { /* non-blocking */ }
@@ -199,7 +207,7 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
 interface CheckOutFormProps {
   reservationId: string;
   guestName: string;
-  onSubmit: (data: { reservation_id: string; notes: string; late_checkout_charge: number }) => Promise<void>;
+  onSubmit: (data: { reservation_id: string; notes: string; late_checkout_charge: number; refund_method: string }) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -237,6 +245,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentRecorded, setPaymentRecorded] = useState(false);
+  const [refundMethod, setRefundMethod] = useState("cash");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -282,7 +291,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
 
   const handleSubmit = async () => {
     setLoading(true); setError(null);
-    try { await onSubmit({ reservation_id: reservationId, notes, late_checkout_charge: lateCharge }); }
+    try { await onSubmit({ reservation_id: reservationId, notes, late_checkout_charge: lateCharge, refund_method: refundMethod }); }
     catch (err) { setError(err instanceof Error ? err.message : "Check-out failed"); setShowConfirm(false); }
     finally { setLoading(false); }
   };
@@ -350,7 +359,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
                 {Number(summary.balance) + lateCharge * 1.18 < summary.deposit_held && (
                   <div className="mt-2">
                     <label className="block text-xs text-gray-600 mb-1">Refund Method:</label>
-                    <select className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
+                    <select value={refundMethod} onChange={(e) => setRefundMethod(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-colors">
                       <option value="cash">Cash</option>
                       <option value="upi">UPI (to original account)</option>
                       <option value="bank_transfer">Bank Transfer</option>

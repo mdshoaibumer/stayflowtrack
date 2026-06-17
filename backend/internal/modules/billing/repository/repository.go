@@ -211,13 +211,13 @@ func (r *Repository) RecordPayment(ctx context.Context, payment *domain.Payment)
 	switch payment.PaymentType {
 	case domain.PaymentTypePayment, domain.PaymentTypeDeposit:
 		_, err = tx.Exec(ctx,
-			`UPDATE folios SET paid_amount = paid_amount + $2, balance = balance - $2 WHERE id = $1`,
-			payment.FolioID, payment.Amount,
+			`UPDATE folios SET paid_amount = paid_amount + $2, balance = balance - $2 WHERE id = $1 AND tenant_id = $3`,
+			payment.FolioID, payment.Amount, payment.TenantID,
 		)
 	case domain.PaymentTypeRefund, domain.PaymentTypeDepositRelease:
 		_, err = tx.Exec(ctx,
-			`UPDATE folios SET paid_amount = paid_amount - $2, balance = balance + $2 WHERE id = $1`,
-			payment.FolioID, payment.Amount,
+			`UPDATE folios SET paid_amount = paid_amount - $2, balance = balance + $2 WHERE id = $1 AND tenant_id = $3`,
+			payment.FolioID, payment.Amount, payment.TenantID,
 		)
 	}
 	if err != nil {
@@ -226,20 +226,41 @@ func (r *Repository) RecordPayment(ctx context.Context, payment *domain.Payment)
 
 	// Update invoice status if linked
 	if payment.InvoiceID != nil {
-		var totalAmount, paidAmount float64
-		err = tx.QueryRow(ctx,
-			`SELECT total_amount, paid_amount + $2 FROM invoices WHERE id = $1`,
-			payment.InvoiceID, payment.Amount,
-		).Scan(&totalAmount, &paidAmount)
-		if err == nil {
-			status := "partially_paid"
-			if paidAmount >= totalAmount {
-				status = "paid"
+		var totalAmount, paidAmount decimal.Decimal
+		// For refunds/releases, subtract from paid_amount; for payments/deposits, add to paid_amount
+		switch payment.PaymentType {
+		case domain.PaymentTypeRefund, domain.PaymentTypeDepositRelease:
+			err = tx.QueryRow(ctx,
+				`SELECT total_amount, paid_amount - $2 FROM invoices WHERE id = $1 AND tenant_id = $3`,
+				payment.InvoiceID, payment.Amount, payment.TenantID,
+			).Scan(&totalAmount, &paidAmount)
+			if err == nil {
+				status := "partially_paid"
+				if paidAmount.LessThanOrEqual(decimal.Zero) {
+					status = "refunded"
+				} else if paidAmount.GreaterThanOrEqual(totalAmount) {
+					status = "paid"
+				}
+				_, _ = tx.Exec(ctx,
+					`UPDATE invoices SET paid_amount = paid_amount - $2, balance_due = balance_due + $2, status = $3 WHERE id = $1 AND tenant_id = $4`,
+					payment.InvoiceID, payment.Amount, status, payment.TenantID,
+				)
 			}
-			_, _ = tx.Exec(ctx,
-				`UPDATE invoices SET paid_amount = paid_amount + $2, balance_due = balance_due - $2, status = $3 WHERE id = $1`,
-				payment.InvoiceID, payment.Amount, status,
-			)
+		default:
+			err = tx.QueryRow(ctx,
+				`SELECT total_amount, paid_amount + $2 FROM invoices WHERE id = $1 AND tenant_id = $3`,
+				payment.InvoiceID, payment.Amount, payment.TenantID,
+			).Scan(&totalAmount, &paidAmount)
+			if err == nil {
+				status := "partially_paid"
+				if paidAmount.GreaterThanOrEqual(totalAmount) {
+					status = "paid"
+				}
+				_, _ = tx.Exec(ctx,
+					`UPDATE invoices SET paid_amount = paid_amount + $2, balance_due = balance_due - $2, status = $3 WHERE id = $1 AND tenant_id = $4`,
+					payment.InvoiceID, payment.Amount, status, payment.TenantID,
+				)
+			}
 		}
 	}
 
@@ -308,6 +329,13 @@ func (r *Repository) GetInvoiceByID(ctx context.Context, invoiceID, tenantID uui
 		&inv.PaidAmount, &inv.BalanceDue, &inv.CheckInDate, &inv.CheckOutDate, &inv.NumNights,
 		&inv.IssuedAt, &dueDate, &notes, &pdfKey, &inv.CreatedAt)
 
+	if err == pgx.ErrNoRows {
+		return nil, apperrors.NotFound("invoice", invoiceID.String())
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get invoice: %w", err)
+	}
+
 	if guestEmail != nil {
 		inv.GuestEmail = *guestEmail
 	}
@@ -327,13 +355,6 @@ func (r *Repository) GetInvoiceByID(ctx context.Context, invoiceID, tenantID uui
 		inv.PDFKey = *pdfKey
 	}
 	inv.DueDate = dueDate
-
-	if err == pgx.ErrNoRows {
-		return nil, apperrors.NotFound("invoice", invoiceID.String())
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get invoice: %w", err)
-	}
 
 	// Fetch line items
 	rows, err := r.pool.Query(ctx,
@@ -435,14 +456,14 @@ func (r *Repository) ListInvoices(ctx context.Context, tenantID uuid.UUID, prope
 	return invoices, count, nil
 }
 
-func (r *Repository) UpdateInvoicePDF(ctx context.Context, invoiceID uuid.UUID, pdfKey string) error {
-	_, err := r.pool.Exec(ctx, `UPDATE invoices SET pdf_key = $2 WHERE id = $1`, invoiceID, pdfKey)
+func (r *Repository) UpdateInvoicePDF(ctx context.Context, invoiceID, tenantID uuid.UUID, pdfKey string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE invoices SET pdf_key = $2 WHERE id = $1 AND tenant_id = $3`, invoiceID, pdfKey, tenantID)
 	return err
 }
 
 // recalculateFolioTotals recalculates folio totals from non-voided line items.
 func (r *Repository) recalculateFolioTotals(ctx context.Context, tx pgx.Tx, folioID uuid.UUID) error {
-	var subtotal, taxTotal float64
+	var subtotal, taxTotal decimal.Decimal
 	err := tx.QueryRow(ctx,
 		`SELECT COALESCE(SUM(amount), 0), COALESCE(SUM(tax_amount), 0)
 		 FROM line_items WHERE folio_id = $1 AND is_void = false`,
@@ -452,9 +473,9 @@ func (r *Repository) recalculateFolioTotals(ctx context.Context, tx pgx.Tx, foli
 		return fmt.Errorf("calc totals: %w", err)
 	}
 
-	totalAmount := subtotal + taxTotal
+	totalAmount := subtotal.Add(taxTotal)
 
-	var paidAmount float64
+	var paidAmount decimal.Decimal
 	err = tx.QueryRow(ctx,
 		`SELECT COALESCE(SUM(CASE WHEN payment_type IN ('payment', 'deposit') THEN amount ELSE -amount END), 0)
 		 FROM payments WHERE folio_id = $1`,
@@ -464,9 +485,11 @@ func (r *Repository) recalculateFolioTotals(ctx context.Context, tx pgx.Tx, foli
 		return fmt.Errorf("calc paid: %w", err)
 	}
 
+	balance := totalAmount.Sub(paidAmount)
+
 	_, err = tx.Exec(ctx,
 		`UPDATE folios SET subtotal = $2, tax_total = $3, total_amount = $4, paid_amount = $5, balance = $6 WHERE id = $1`,
-		folioID, subtotal, taxTotal, totalAmount, paidAmount, totalAmount-paidAmount,
+		folioID, subtotal, taxTotal, totalAmount, paidAmount, balance,
 	)
 	if err != nil {
 		return fmt.Errorf("update folio totals: %w", err)

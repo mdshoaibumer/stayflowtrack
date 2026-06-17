@@ -42,6 +42,7 @@ import (
 	resrepo "github.com/stayflow/stayflow-track/internal/modules/reservation/repository"
 	resservice "github.com/stayflow/stayflow-track/internal/modules/reservation/service"
 	"github.com/stayflow/stayflow-track/internal/platform/storage"
+	"github.com/stayflow/stayflow-track/internal/shared/audit"
 )
 
 // TestEnv holds the test server and database for integration tests.
@@ -167,12 +168,14 @@ func buildServer(pool *pgxpool.Pool, jwtCfg config.JWTConfig) *httptest.Server {
 	billingSvc := billingservice.New(billingRepo, store)
 	hkSvc := hkservice.New(hkRepo)
 
+	auditLog := audit.New(pool)
+
 	// Handlers
-	authH := authhandler.New(authSvc, log)
+	authH := authhandler.New(authSvc, log, auditLog)
 	propH := prophandler.New(propSvc, log)
 	guestH := guesthandler.New(guestSvc, log)
 	resH := reshandler.New(resSvc, log)
-	billingH := billinghandler.New(billingSvc, log)
+	billingH := billinghandler.New(billingSvc, log, auditLog)
 	hkH := hkhandler.New(hkSvc, log)
 
 	// Middleware

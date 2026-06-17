@@ -4,22 +4,25 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/stayflow/stayflow-track/internal/modules/auth/middleware"
 	"github.com/stayflow/stayflow-track/internal/modules/auth/service"
+	"github.com/stayflow/stayflow-track/internal/shared/audit"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
 	"github.com/stayflow/stayflow-track/internal/shared/response"
 	"github.com/stayflow/stayflow-track/internal/shared/validation"
 )
 
 type Handler struct {
-	service *service.Service
-	log     zerolog.Logger
+	service  *service.Service
+	log      zerolog.Logger
+	auditLog *audit.Logger
 }
 
-func New(svc *service.Service, log zerolog.Logger) *Handler {
-	return &Handler{service: svc, log: log}
+func New(svc *service.Service, log zerolog.Logger, auditLog *audit.Logger) *Handler {
+	return &Handler{service: svc, log: log, auditLog: auditLog}
 }
 
 func (h *Handler) RegisterTenant(w http.ResponseWriter, r *http.Request) {
@@ -58,9 +61,36 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.service.Login(r.Context(), input)
 	if err != nil {
+		// Audit failed login attempts
+		ip, ua := audit.FromRequest(r)
+		h.auditLog.Log(r.Context(), audit.Entry{
+			TenantID:   [16]byte{},
+			Action:     audit.ActionLogin,
+			EntityType: "user",
+			NewValues:  map[string]any{"email": input.Email, "success": false},
+			IPAddress:  ip,
+			UserAgent:  ua,
+		})
+		h.log.Warn().Str("email", input.Email).Msg("login attempt failed")
 		response.Err(w, err)
 		return
 	}
+
+	// Audit successful login
+	ip, ua := audit.FromRequest(r)
+	userID, _ := uuid.Parse(tokens.User.ID)
+	tenantID, _ := uuid.Parse(tokens.User.TenantID)
+	h.auditLog.Log(r.Context(), audit.Entry{
+		TenantID:   tenantID,
+		UserID:     userID,
+		Action:     audit.ActionLogin,
+		EntityType: "user",
+		EntityID:   userID,
+		NewValues:  map[string]any{"email": input.Email, "success": true},
+		IPAddress:  ip,
+		UserAgent:  ua,
+	})
+	h.log.Info().Str("user_id", tokens.User.ID).Str("email", input.Email).Msg("user logged in")
 
 	response.JSON(w, http.StatusOK, tokens)
 }

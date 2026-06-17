@@ -247,6 +247,71 @@ func (r *Repository) CheckConflict(ctx context.Context, unitID uuid.UUID, checkI
 	return hasConflict, nil
 }
 
+// CheckConflictForUpdate performs a conflict check within a serializable-like advisory lock scope.
+func (r *Repository) CheckConflictForUpdate(ctx context.Context, unitID uuid.UUID, checkIn, checkOut time.Time, excludeID *uuid.UUID, tenantID uuid.UUID) (bool, error) {
+	var hasConflict bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT check_reservation_conflict($1, $2, $3, $4)`,
+		unitID, checkIn, checkOut, excludeID,
+	).Scan(&hasConflict)
+	if err != nil {
+		return false, fmt.Errorf("check conflict for update: %w", err)
+	}
+	return hasConflict, nil
+}
+
+// CreateReservationAtomic performs conflict check + insert in a single transaction to prevent double-booking.
+func (r *Repository) CreateReservationAtomic(ctx context.Context, res *domain.Reservation) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Acquire advisory lock on the unit to serialize concurrent booking attempts
+	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1::text))`, res.UnitID)
+	if err != nil {
+		return fmt.Errorf("acquire advisory lock: %w", err)
+	}
+
+	// Check for conflicts within the transaction
+	var hasConflict bool
+	err = tx.QueryRow(ctx,
+		`SELECT EXISTS(
+			SELECT 1 FROM reservations
+			WHERE unit_id = $1
+			  AND status NOT IN ('cancelled', 'checked_out')
+			  AND check_in_date < $3
+			  AND check_out_date > $2
+		)`,
+		res.UnitID, res.CheckInDate, res.CheckOutDate,
+	).Scan(&hasConflict)
+	if err != nil {
+		return fmt.Errorf("check conflict in tx: %w", err)
+	}
+	if hasConflict {
+		return apperrors.Conflict("unit is not available for the selected dates")
+	}
+
+	// Insert reservation
+	err = tx.QueryRow(ctx,
+		`INSERT INTO reservations (
+			tenant_id, property_id, unit_id, guest_id,
+			booking_source, status, check_in_date, check_out_date,
+			num_guests, rate_per_night, total_amount, notes, external_booking_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		RETURNING id, created_at, updated_at`,
+		res.TenantID, res.PropertyID, res.UnitID, res.GuestID,
+		res.BookingSource, res.Status, res.CheckInDate, res.CheckOutDate,
+		res.NumGuests, res.RatePerNight, res.TotalAmount, res.Notes, res.ExternalBookingID,
+	).Scan(&res.ID, &res.CreatedAt, &res.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("create reservation in tx: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (r *Repository) GetAvailableUnits(ctx context.Context, propertyID, tenantID uuid.UUID, checkIn, checkOut time.Time) ([]domain.AvailableUnit, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT u.id, u.unit_number, COALESCE(u.floor, ''), ut.name, ut.base_rate
@@ -258,6 +323,7 @@ func (r *Repository) GetAvailableUnits(ctx context.Context, propertyID, tenantID
 		   AND u.id NOT IN (
 		       SELECT unit_id FROM reservations
 		       WHERE property_id = $1
+		         AND tenant_id = $2
 		         AND status NOT IN ('cancelled', 'checked_out')
 		         AND check_in_date < $4
 		         AND check_out_date > $3
@@ -291,6 +357,12 @@ func (r *Repository) UpdateUnitStatus(ctx context.Context, unitID uuid.UUID, sta
 	return err
 }
 
+// UpdateUnitStatusWithTenant updates unit status with tenant isolation.
+func (r *Repository) UpdateUnitStatusWithTenant(ctx context.Context, unitID, tenantID uuid.UUID, status string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE units SET status = $2 WHERE id = $1 AND tenant_id = $3`, unitID, status, tenantID)
+	return err
+}
+
 func (r *Repository) GetReservationGuestID(ctx context.Context, id, tenantID uuid.UUID) (uuid.UUID, error) {
 	var guestID uuid.UUID
 	err := r.pool.QueryRow(ctx,
@@ -305,7 +377,7 @@ func (r *Repository) GetReservationGuestID(ctx context.Context, id, tenantID uui
 	return guestID, nil
 }
 
-func (r *Repository) IncrementGuestStays(ctx context.Context, guestID uuid.UUID) error {
-	_, err := r.pool.Exec(ctx, `UPDATE guests SET total_stays = total_stays + 1 WHERE id = $1`, guestID)
+func (r *Repository) IncrementGuestStays(ctx context.Context, guestID, tenantID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `UPDATE guests SET total_stays = total_stays + 1 WHERE id = $1 AND tenant_id = $2`, guestID, tenantID)
 	return err
 }

@@ -104,6 +104,22 @@ func (r *Repository) GetCalendarView(ctx context.Context, tenantID, propertyID u
 	}, nil
 }
 
+// GetReservationStatus returns the current status of a reservation.
+func (r *Repository) GetReservationStatus(ctx context.Context, tenantID, reservationID uuid.UUID) (string, error) {
+	var status string
+	err := r.pool.QueryRow(ctx,
+		`SELECT status FROM reservations WHERE id = $1 AND tenant_id = $2`,
+		reservationID, tenantID,
+	).Scan(&status)
+	if err == pgx.ErrNoRows {
+		return "", apperrors.NotFound("reservation", reservationID.String())
+	}
+	if err != nil {
+		return "", fmt.Errorf("get reservation status: %w", err)
+	}
+	return status, nil
+}
+
 // MoveReservation updates unit and dates within a transaction.
 func (r *Repository) MoveReservation(ctx context.Context, tenantID, reservationID, newUnitID uuid.UUID, newCheckIn, newCheckOut time.Time) error {
 	tx, err := r.pool.Begin(ctx)

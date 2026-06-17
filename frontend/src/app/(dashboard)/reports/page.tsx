@@ -385,8 +385,15 @@ export default function ReportsPage() {
               <button
                 onClick={async () => {
                   setShowCloseDayConfirm(false);
-                  await api.post(`/api/v1/dashboard/${propertyId}/close-day`, { date: dateRange.start });
-                  generateReport();
+                  setLoading(true);
+                  try {
+                    await api.post(`/api/v1/dashboard/${propertyId}/close-day`, { date: dateRange.start });
+                    await generateReport();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to close day");
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
               >
@@ -411,6 +418,8 @@ function ReportTable({ data, type }: { data: any; type: ReportType }) {
     const totalInvoiceAmount = items.reduce((sum: number, inv: any) => sum + (Number(inv.total_amount) || 0), 0);
     const cgst = totalTax / 2;
     const sgst = totalTax / 2;
+    // Calculate effective GST rate from totals (avoid hardcoding 9%)
+    const effectiveRate = totalTaxable > 0 ? ((totalTax / totalTaxable) * 100 / 2).toFixed(1) : "0";
 
     return (
       <div className="space-y-4">
@@ -421,11 +430,11 @@ function ReportTable({ data, type }: { data: any; type: ReportType }) {
           </div>
           <div className="bg-green-50 rounded-lg p-3 text-center">
             <p className="text-lg font-bold text-green-700">₹{cgst.toLocaleString()}</p>
-            <p className="text-xs text-green-600">CGST (9%)</p>
+            <p className="text-xs text-green-600">CGST ({effectiveRate}%)</p>
           </div>
           <div className="bg-green-50 rounded-lg p-3 text-center">
             <p className="text-lg font-bold text-green-700">₹{sgst.toLocaleString()}</p>
-            <p className="text-xs text-green-600">SGST (9%)</p>
+            <p className="text-xs text-green-600">SGST ({effectiveRate}%)</p>
           </div>
           <div className="bg-purple-50 rounded-lg p-3 text-center">
             <p className="text-lg font-bold text-purple-700">₹{totalInvoiceAmount.toLocaleString()}</p>
