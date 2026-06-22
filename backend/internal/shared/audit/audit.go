@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"net"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -69,10 +70,14 @@ func (l *Logger) write(ctx context.Context, entry Entry) error {
 }
 
 // FromRequest extracts IP and User-Agent from an HTTP request.
+// NOTE: Relies on chi/middleware.RealIP being applied upstream, which sets
+// r.RemoteAddr to the trusted client IP. Do NOT read X-Forwarded-For directly
+// here — it is attacker-controlled and would allow audit log spoofing.
 func FromRequest(r *http.Request) (ip string, userAgent string) {
 	ip = r.RemoteAddr
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		ip = fwd
+	// Strip port if present (RealIP middleware may leave host:port format)
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		ip = host
 	}
 	return ip, r.UserAgent()
 }

@@ -69,8 +69,8 @@ function ReservationsContent() {
     if (!propertyId) return;
     setLoading(true);
     try {
-      const data = await api.get<any>("/api/v1/reservations", { property_id: propertyId, per_page: "50" });
-      setReservations(Array.isArray(data) ? data : data?.data || []);
+      const data = await api.get<Reservation[] | { data: Reservation[] }>("/api/v1/reservations", { property_id: propertyId, per_page: "50" });
+      setReservations(Array.isArray(data) ? data : (data as { data: Reservation[] })?.data || []);
     } catch {
       // Silent — calendar is primary view
     } finally {
@@ -129,11 +129,11 @@ function ReservationsContent() {
         <ReservationCalendar
           propertyId={propertyId}
           onMoveBooking={handleMoveBooking}
-          onCellClick={(unitId, date) => {
+          onCellClick={() => {
             setShowNewBooking(true);
           }}
           onEntryClick={(entry) => {
-            setSelectedReservation(entry as any);
+            setSelectedReservation(entry as unknown as Reservation);
           }}
         />
       )}
@@ -255,12 +255,12 @@ function NewBookingModal({ propertyId, onClose, onCreated }: { propertyId: strin
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<any>("/api/v1/reservations/availability", {
+      const data = await api.get<AvailableUnit[] | { units?: AvailableUnit[]; data?: AvailableUnit[] }>("/api/v1/reservations/availability", {
         property_id: propertyId,
         check_in: checkIn,
         check_out: checkOut,
       });
-      const units = Array.isArray(data) ? data : data?.units || data?.data || [];
+      const units = Array.isArray(data) ? data : (data as { units?: AvailableUnit[]; data?: AvailableUnit[] })?.units || (data as { data?: AvailableUnit[] })?.data || [];
       setAvailableUnits(units);
       if (units.length === 0) setError("No units available for selected dates");
     } catch (err) {
@@ -274,8 +274,8 @@ function NewBookingModal({ propertyId, onClose, onCreated }: { propertyId: strin
     setGuestSearch(query);
     if (query.length < 2) { setGuestResults([]); return; }
     try {
-      const data = await api.get<any>("/api/v1/guests/search", { search: query });
-      setGuestResults(Array.isArray(data) ? data : data?.data || []);
+      const data = await api.get<GuestOption[] | { data: GuestOption[] }>("/api/v1/guests/search", { search: query });
+      setGuestResults(Array.isArray(data) ? data : (data as { data: GuestOption[] })?.data || []);
     } catch { /* silent */ }
   };
 
@@ -484,7 +484,7 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
       await api.post(`/api/v1/reservations/${reservation.id}/cancel`, { reason: "Cancelled by staff" });
       onUpdated();
       onClose();
-    } catch (err) {
+    } catch {
       // Error handled by useApi (401 logout), other errors show in console
     }
     finally { setLoading(false); }
@@ -496,7 +496,7 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
       await api.post(`/api/v1/reservations/${reservation.id}/confirm`);
       onUpdated();
       onClose();
-    } catch (err) {
+    } catch {
       // Error handled by useApi (401 logout)
     }
     finally { setLoading(false); }
@@ -566,8 +566,8 @@ function ReservationDetailDrawer({ reservation, onClose, onUpdated }: { reservat
   );
 }
 
-function GuestSelectionStep({ api, guestSearch, setGuestSearch, guestResults, searchGuests, selectedGuest, setSelectedGuest, onBack, onNext }: {
-  api: any;
+function GuestSelectionStep({ api, guestSearch, setGuestSearch: _setGuestSearch, guestResults, searchGuests, selectedGuest, setSelectedGuest, onBack, onNext }: {
+  api: ReturnType<typeof import("@/hooks/useApi").useApi>;
   guestSearch: string;
   setGuestSearch: (s: string) => void;
   guestResults: GuestOption[];
@@ -595,7 +595,7 @@ function GuestSelectionStep({ api, guestSearch, setGuestSearch, guestResults, se
         last_name: newGuest.last_name || "",
         phone: newGuest.phone,
         email: newGuest.email || undefined,
-      });
+      }) as { id: string };
       setSelectedGuest({ id: result.id, full_name: `${newGuest.first_name} ${newGuest.last_name}`.trim(), phone: newGuest.phone });
       setShowCreateGuest(false);
     } catch (err) {

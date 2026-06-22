@@ -71,6 +71,18 @@ func (s *Service) AddCharge(ctx context.Context, tenantID, userID uuid.UUID, inp
 		date = parsed
 	}
 
+	// Validate amount bounds to prevent absurd charges
+	maxAmount := decimal.NewFromInt(10_000_000) // 1 crore INR max per line item
+	if input.UnitPrice.GreaterThan(maxAmount) {
+		return nil, apperrors.BadRequest("unit price exceeds maximum allowed amount")
+	}
+	if !input.UnitPrice.IsPositive() {
+		return nil, apperrors.BadRequest("unit price must be positive")
+	}
+	if input.TaxRate.IsNegative() || input.TaxRate.GreaterThan(decimal.NewFromInt(100)) {
+		return nil, apperrors.BadRequest("tax rate must be between 0 and 100")
+	}
+
 	item := &domain.LineItem{
 		TenantID:    tenantID,
 		FolioID:     input.FolioID,
@@ -102,6 +114,12 @@ func (s *Service) RecordPayment(ctx context.Context, tenantID, userID uuid.UUID,
 	// Validate payment amount is positive
 	if !input.Amount.IsPositive() {
 		return nil, apperrors.BadRequest("payment amount must be positive")
+	}
+
+	// Validate amount bounds
+	maxPayment := decimal.NewFromInt(100_000_000) // 10 crore INR max per payment
+	if input.Amount.GreaterThan(maxPayment) {
+		return nil, apperrors.BadRequest("payment amount exceeds maximum allowed")
 	}
 
 	// Validate folio exists

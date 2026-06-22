@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"time"
 )
@@ -177,39 +178,69 @@ func (c *Client) CreateRefund(ctx context.Context, paymentID string, amountPaise
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, payload interface{}, result interface{}) error {
-	var body io.Reader
+	var body []byte
 	if payload != nil {
-		jsonData, err := json.Marshal(payload)
+		var err error
+		body, err = json.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("marshal payload: %w", err)
 		}
-		body = bytes.NewReader(jsonData)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, c.cfg.BaseURL+path, body)
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-	req.SetBasicAuth(c.cfg.KeyID, c.cfg.KeySecret)
-	req.Header.Set("Content-Type", "application/json")
+	// Retry with exponential backoff for transient failures (5xx, network errors)
+	const maxRetries = 3
+	var lastErr error
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("do request: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	respBody, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("razorpay API error (status %d): %s", resp.StatusCode, string(respBody))
-	}
-
-	if result != nil && len(respBody) > 0 {
-		if err := json.Unmarshal(respBody, result); err != nil {
-			return fmt.Errorf("unmarshal response: %w", err)
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			// Exponential backoff: 1s, 2s, 4s
+			backoff := time.Duration(math.Pow(2, float64(attempt-1))) * time.Second
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
 		}
+
+		var reqBody io.Reader
+		if body != nil {
+			reqBody = bytes.NewReader(body)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, method, c.cfg.BaseURL+path, reqBody)
+		if err != nil {
+			return fmt.Errorf("create request: %w", err)
+		}
+		req.SetBasicAuth(c.cfg.KeyID, c.cfg.KeySecret)
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("do request: %w", err)
+			continue // Retry on network error
+		}
+
+		respBody, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+
+		// Don't retry client errors (4xx) — only server errors (5xx) and network issues
+		if resp.StatusCode >= 500 {
+			lastErr = fmt.Errorf("razorpay API error (status %d): %s", resp.StatusCode, string(respBody))
+			continue // Retry on server error
+		}
+
+		if resp.StatusCode >= 400 {
+			return fmt.Errorf("razorpay API error (status %d): %s", resp.StatusCode, string(respBody))
+		}
+
+		if result != nil && len(respBody) > 0 {
+			if err := json.Unmarshal(respBody, result); err != nil {
+				return fmt.Errorf("unmarshal response: %w", err)
+			}
+		}
+
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("razorpay request failed after %d retries: %w", maxRetries, lastErr)
 }

@@ -15,6 +15,7 @@ interface SelectProps {
 function Select({ value, onValueChange, children }: SelectProps) {
   const [open, setOpen] = React.useState(false);
   const [selected, setSelected] = React.useState(value || '');
+  const listboxId = React.useId();
 
   React.useEffect(() => {
     if (value !== undefined) setSelected(value);
@@ -27,7 +28,7 @@ function Select({ value, onValueChange, children }: SelectProps) {
   };
 
   return (
-    <SelectContext.Provider value={{ open, setOpen, selected, handleSelect }}>
+    <SelectContext.Provider value={{ open, setOpen, selected, handleSelect, listboxId }}>
       <div className="relative">{children}</div>
     </SelectContext.Provider>
   );
@@ -38,6 +39,7 @@ interface SelectContextValue {
   setOpen: (open: boolean) => void;
   selected: string;
   handleSelect: (value: string) => void;
+  listboxId: string;
 }
 
 const SelectContext = React.createContext<SelectContextValue>({
@@ -45,11 +47,12 @@ const SelectContext = React.createContext<SelectContextValue>({
   setOpen: () => {},
   selected: '',
   handleSelect: () => {},
+  listboxId: '',
 });
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ className, children, ...props }, ref) => {
-    const { open, setOpen } = React.useContext(SelectContext);
+    const { open, setOpen, listboxId } = React.useContext(SelectContext);
     return (
       <button
         ref={ref}
@@ -57,6 +60,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
         role="combobox"
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-controls={listboxId}
         className={cn(
           'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           className
@@ -81,7 +85,7 @@ function SelectValue({ placeholder }: { placeholder?: string }) {
 }
 
 function SelectContent({ children, className }: { children: React.ReactNode; className?: string }) {
-  const { open, setOpen } = React.useContext(SelectContext);
+  const { open, setOpen, listboxId } = React.useContext(SelectContext);
   const listRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -100,6 +104,7 @@ function SelectContent({ children, className }: { children: React.ReactNode; cla
       <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
       <div
         ref={listRef}
+        id={listboxId}
         role="listbox"
         className={cn(
           'absolute z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md',

@@ -28,7 +28,7 @@ interface Guest {
 }
 
 export default function GuestsPage() {
-  const { user } = useAuth();
+  useAuth(); // ensure authenticated
   const api = useApi();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,26 +49,26 @@ export default function GuestsPage() {
         search ? "/api/v1/guests/search" : "/api/v1/guests",
         params
       );
-      const rawGuests = Array.isArray(data) ? data : (data as any)?.data || (data as any) || [];
+      const rawGuests = Array.isArray(data) ? data : (data as { data: Guest[] })?.data || [];
       // Normalize: API returns first_name/last_name, UI uses full_name
-      const normalized = rawGuests.map((g: any) => ({
+      const normalized = rawGuests.map((g: Guest & { first_name?: string; last_name?: string }) => ({
         ...g,
         full_name: g.full_name || [g.first_name, g.last_name].filter(Boolean).join(" ") || "Unknown",
       }));
       setGuests(normalized);
-      if ((data as any)?.meta?.total_pages) setTotalPages((data as any).meta.total_pages);
+      if ((data as { meta?: { total_pages: number } })?.meta?.total_pages) setTotalPages((data as { meta: { total_pages: number } }).meta.total_pages);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load guests");
     } finally {
       setLoading(false);
     }
-  }, [api, page, search]);
+  }, [api, page]); // eslint-disable-line react-hooks/exhaustive-deps -- search triggers via debounced effect below
 
   useEffect(() => {
     const debounce = setTimeout(fetchGuests, search ? 300 : 0);
     return () => clearTimeout(debounce);
-  }, [fetchGuests]);
+  }, [fetchGuests, search]);
 
   return (
     <div className="page-container">
@@ -301,14 +301,15 @@ function CreateGuestModal({ onClose, onCreated }: { onClose: () => void; onCreat
   );
 }
 
-function GuestDetailDrawer({ guest, onClose, onUpdated }: { guest: Guest; onClose: () => void; onUpdated: () => void }) {
+function GuestDetailDrawer({ guest, onClose, onUpdated: _onUpdated }: { guest: Guest; onClose: () => void; onUpdated: () => void }) {
   const api = useApi();
-  const [history, setHistory] = useState<any[]>([]);
+  interface StayRecord { unit_number?: string; status?: string; check_in_date?: string; check_out_date?: string; }
+  const [history, setHistory] = useState<StayRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
   useEffect(() => {
-    api.get(`/api/v1/guests/${guest.id}/history`).then((data: any) => {
-      setHistory(Array.isArray(data) ? data : data?.data || []);
+    api.get<StayRecord[] | { data: StayRecord[] }>(`/api/v1/guests/${guest.id}/history`).then((data) => {
+      setHistory(Array.isArray(data) ? data : (data as { data: StayRecord[] })?.data || []);
     }).catch(() => {}).finally(() => setLoadingHistory(false));
   }, [api, guest.id]);
 
@@ -354,7 +355,7 @@ function GuestDetailDrawer({ guest, onClose, onUpdated }: { guest: Guest; onClos
               {!loadingHistory && history.length === 0 && (
                 <p className="text-sm text-muted-foreground">No previous stays</p>
               )}
-              {!loadingHistory && history.map((stay: any, i: number) => (
+              {!loadingHistory && history.map((stay, i) => (
                 <div key={i} className="border rounded-lg p-3 mb-2 text-sm">
                   <div className="flex justify-between">
                     <span className="font-medium text-foreground">{stay.unit_number || "Unit"}</span>

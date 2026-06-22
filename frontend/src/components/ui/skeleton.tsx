@@ -4,7 +4,7 @@ function cn(...classes: (string | undefined | false)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
+type SkeletonProps = React.HTMLAttributes<HTMLDivElement>;
 
 function Skeleton({ className, ...props }: SkeletonProps) {
   return (

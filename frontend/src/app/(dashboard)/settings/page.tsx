@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const api = useApi();
+  useAuth(); // ensure authenticated
+  useApi(); // init api context
   const [tab, setTab] = useState("property");
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -66,7 +66,7 @@ function PropertySettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
 
   useEffect(() => {
     if (!user?.property_id) return;
-    api.get<any>(`/api/v1/properties/${user.property_id}`).then((data: any) => {
+    api.get<Record<string, string>>(`/api/v1/properties/${user.property_id}`).then((data) => {
       if (data) setForm((prev) => ({ ...prev, ...data }));
     }).catch(() => {});
   }, [api, user?.property_id]);
@@ -137,7 +137,7 @@ function PropertySettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
   );
 }
 
-function ProfileSettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
+function ProfileSettings({ onSuccess: _onSuccess }: { onSuccess: (msg: string) => void }) {
   const { user } = useAuth();
 
   return (
@@ -212,7 +212,8 @@ function PasswordSettings({ onSuccess }: { onSuccess: (msg: string) => void }) {
 
 function TeamSettings() {
   const api = useApi();
-  const [members, setMembers] = useState<any[]>([]);
+  interface TeamMember { id?: string; email: string; full_name?: string; role?: string; }
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -220,8 +221,8 @@ function TeamSettings() {
   const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
-    api.get<any>("/api/v1/users", {}).then((data: any) => {
-      setMembers(Array.isArray(data) ? data : data?.data || []);
+    api.get<TeamMember[] | { data: TeamMember[] }>("/api/v1/users", {}).then((data) => {
+      setMembers(Array.isArray(data) ? data : (data as { data: TeamMember[] })?.data || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [api]);
 
@@ -233,8 +234,8 @@ function TeamSettings() {
       setShowInvite(false);
       setInviteEmail("");
       // Refresh
-      const data = await api.get<any>("/api/v1/users", {});
-      setMembers(Array.isArray(data) ? data : data?.data || []);
+      const data = await api.get<TeamMember[] | { data: TeamMember[] }>("/api/v1/users", {});
+      setMembers(Array.isArray(data) ? data : (data as { data: TeamMember[] })?.data || []);
     } catch { /* silent */ }
     finally { setInviteLoading(false); }
   };
@@ -249,7 +250,7 @@ function TeamSettings() {
       {loading && <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto"></div>}
 
       {!loading && members.length === 0 && <p className="text-sm text-gray-400">No team members</p>}
-      {!loading && members.map((m: any) => (
+      {!loading && members.map((m) => (
         <div key={m.id || m.email} className="flex items-center justify-between py-2 border-b last:border-0">
           <div>
             <p className="text-sm font-medium">{m.full_name || m.email}</p>

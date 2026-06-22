@@ -112,11 +112,14 @@ func main() {
 			AppName: cfg.Notifications.GupshupApp,
 		})
 		log.Info().Msg("using gupshup notification provider")
-	default:
+	case "log":
 		notifProvider = notifprovider.NewLogProvider()
+		log.Info().Msg("using log notification provider (notifications will only be logged)")
+	default:
 		if cfg.App.Env == "production" {
-			log.Warn().Msg("using log notification provider in production — set NOTIFICATION_PROVIDER=gupshup for real delivery")
+			log.Fatal().Msg("NOTIFICATION_PROVIDER must be explicitly set in production (gupshup or log)")
 		}
+		notifProvider = notifprovider.NewLogProvider()
 	}
 
 	// Razorpay client (nil in dev if no keys configured)
@@ -175,14 +178,16 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORS.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Tenant-ID"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Tenant-ID", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 	r.Use(globalLimiter.Limit)
+	r.Use(middleware.CSRFProtection)
 	r.Use(middleware.MetricsMiddleware)
 	r.Use(middleware.MaxBodySize(1 << 20)) // 1MB global limit
+	r.Use(middleware.RequestTimeout(30 * time.Second))
 
 	// Health checks
 	healthHandler := middleware.NewHealthHandler(func() error {

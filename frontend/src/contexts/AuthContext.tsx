@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface User {
@@ -38,6 +38,47 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+// Secure token storage key prefix
+const STORAGE_KEY_PREFIX = "sf_";
+
+/**
+ * Safe storage helpers that handle SSR and storage errors gracefully.
+ * Tokens are stored in sessionStorage (cleared on tab close) instead of localStorage
+ * to reduce XSS persistence window.
+ */
+function getStorageItem(key: string): string | null {
+  try {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem(`${STORAGE_KEY_PREFIX}${key}`);
+  } catch {
+    return null;
+  }
+}
+
+function setStorageItem(key: string, value: string): void {
+  try {
+    if (typeof window === "undefined") return;
+    sessionStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, value);
+  } catch {
+    // Storage quota exceeded or blocked — fail silently
+  }
+}
+
+function removeStorageItem(key: string): void {
+  try {
+    if (typeof window === "undefined") return;
+    sessionStorage.removeItem(`${STORAGE_KEY_PREFIX}${key}`);
+  } catch {
+    // Fail silently
+  }
+}
+
+function clearStorage(): void {
+  removeStorageItem("at");
+  removeStorageItem("rt");
+  removeStorageItem("user");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [state, setState] = useState<AuthState>({
@@ -46,17 +87,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
     isLoading: true,
   });
+  const logoutRef = useRef<() => void>(() => {});
+
+  // Keep logoutRef current to avoid stale closures in interval
+  const logout = useCallback(() => {
+    const token = getStorageItem("at");
+    if (token) {
+      fetch(`${API_BASE}/api/v1/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+    clearStorage();
+    setState({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+    router.push("/login");
+  }, [router]);
+
+  logoutRef.current = logout;
 
   // Restore session on mount
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    const userStr = localStorage.getItem("user");
+    const token = getStorageItem("at");
+    const userStr = getStorageItem("user");
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
         setState({ user, accessToken: token, isAuthenticated: true, isLoading: false });
       } catch {
-        localStorage.clear();
+        clearStorage();
         setState((s) => ({ ...s, isLoading: false }));
       }
     } else {
@@ -64,33 +122,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Auto-refresh token
+  // Tab synchronization — logout if another tab clears the session
+  useEffect(() => {
+    function handleStorageChange(e: StorageEvent) {
+      // sessionStorage doesn't fire storage events across tabs,
+      // but we broadcast logout via a localStorage signal
+      if (e.key === `${STORAGE_KEY_PREFIX}logout_signal` && e.newValue) {
+        clearStorage();
+        setState({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+        router.push("/login");
+      }
+    }
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [router]);
+
+  // Auto-refresh token with jitter to prevent thundering herd
   useEffect(() => {
     if (!state.isAuthenticated) return;
-    const interval = setInterval(async () => {
-      try {
-        const refreshToken = localStorage.getItem("refresh_token");
-        if (!refreshToken) return;
-        const resp = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          localStorage.setItem("access_token", data.data.access_token);
-          if (data.data.refresh_token) {
-            localStorage.setItem("refresh_token", data.data.refresh_token);
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let failCount = 0;
+    const MAX_FAILURES = 3;
+
+    const scheduleRefresh = () => {
+      // Base: 4 minutes, jitter: 0-30 seconds
+      const baseMs = 4 * 60 * 1000;
+      const jitterMs = Math.random() * 30_000;
+      // Exponential backoff on failures
+      const backoffMs = failCount > 0 ? Math.min(failCount * 10_000, 60_000) : 0;
+      const delay = baseMs + jitterMs + backoffMs;
+
+      timeoutId = setTimeout(async () => {
+        try {
+          const refreshToken = getStorageItem("rt");
+          if (!refreshToken) {
+            logoutRef.current();
+            return;
           }
-          setState((s) => ({ ...s, accessToken: data.data.access_token }));
-        } else {
-          logout();
+          const resp = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            setStorageItem("at", data.data.access_token);
+            if (data.data.refresh_token) {
+              setStorageItem("rt", data.data.refresh_token);
+            }
+            setState((s) => ({ ...s, accessToken: data.data.access_token }));
+            failCount = 0;
+          } else {
+            failCount++;
+            if (failCount >= MAX_FAILURES) {
+              logoutRef.current();
+              return;
+            }
+          }
+        } catch {
+          failCount++;
+          if (failCount >= MAX_FAILURES) {
+            logoutRef.current();
+            return;
+          }
         }
-      } catch {
-        // Silent fail — will retry next interval
-      }
-    }, 4 * 60 * 1000); // Refresh every 4 minutes
-    return () => clearInterval(interval);
+        scheduleRefresh();
+      }, delay);
+    };
+
+    scheduleRefresh();
+    return () => clearTimeout(timeoutId);
   }, [state.isAuthenticated]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -104,9 +206,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(data.error?.message || "Login failed");
     }
     const { access_token, refresh_token, user } = data.data;
-    localStorage.setItem("access_token", access_token);
-    localStorage.setItem("refresh_token", refresh_token);
-    localStorage.setItem("user", JSON.stringify(user));
+    setStorageItem("at", access_token);
+    setStorageItem("rt", refresh_token);
+    setStorageItem("user", JSON.stringify(user));
     setState({ user, accessToken: access_token, isAuthenticated: true, isLoading: false });
     router.push("/dashboard");
   }, [router]);
@@ -124,29 +226,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Auto-login after register
     if (data.data?.access_token) {
       const { access_token, refresh_token, user } = data.data;
-      localStorage.setItem("access_token", access_token);
-      localStorage.setItem("refresh_token", refresh_token);
-      localStorage.setItem("user", JSON.stringify(user));
+      setStorageItem("at", access_token);
+      setStorageItem("rt", refresh_token);
+      setStorageItem("user", JSON.stringify(user));
       setState({ user, accessToken: access_token, isAuthenticated: true, isLoading: false });
       router.push("/dashboard");
     } else {
       router.push("/login?registered=true");
     }
-  }, [router]);
-
-  const logout = useCallback(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      fetch(`${API_BASE}/api/v1/auth/logout`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-    }
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user");
-    setState({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
-    router.push("/login");
   }, [router]);
 
   const requestPasswordReset = useCallback(async (email: string) => {

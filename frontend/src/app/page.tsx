@@ -35,12 +35,12 @@ export default function Home() {
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/50" role="navigation" aria-label="Main navigation">
+      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border/30 shadow-sm" role="navigation" aria-label="Main navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center" aria-hidden="true">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md" aria-hidden="true">
               <svg className="w-4 h-4 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
@@ -69,14 +69,14 @@ function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 lg:pt-32 lg:pb-28">
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-accent/5 text-accent border border-accent/15 mb-8">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-accent/5 text-accent border border-accent/15 mb-8 shadow-sm animate-fade-in-up">
               <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-subtle" aria-hidden="true" />
-              Built for service apartments & boutique hotels
+              Built for service apartments &amp; boutique hotels
             </div>
 
-            <h1 id="hero-heading" className="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.1]">
+            <h1 id="hero-heading" className="text-4xl sm:text-5xl lg:text-[3.75rem] font-bold tracking-tight leading-[1.08] animate-blur-in">
               Property operations,{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-accent">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-accent">
                 finally simple
               </span>
             </h1>
@@ -87,14 +87,14 @@ function LandingPage() {
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/register" className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-primary-foreground bg-primary rounded-xl hover:bg-primary/90 shadow-md hover:shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Link href="/register" className="group inline-flex items-center gap-2 px-7 py-3.5 text-sm font-semibold text-primary-foreground bg-primary rounded-xl hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]">
                 Start Free Trial
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </Link>
-              <a href="#how-it-works" className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-foreground bg-background border border-border rounded-xl hover:bg-muted shadow-sm transition-all">
-                <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <a href="#how-it-works" className="group inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-foreground bg-card border border-border rounded-xl hover:bg-muted hover:border-primary/20 shadow-sm transition-all duration-200 active:scale-[0.98]">
+                <svg className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -127,10 +127,11 @@ function LandingPage() {
           </div>
         </div>
 
-        {/* Background gradient orbs */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1200px] h-[700px] opacity-[0.15] pointer-events-none" aria-hidden="true">
-          <div className="absolute top-20 left-[20%] w-80 h-80 rounded-full bg-primary blur-[128px]" />
-          <div className="absolute top-40 right-[20%] w-72 h-72 rounded-full bg-accent blur-[120px]" />
+        {/* Background gradient orbs — premium depth */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1400px] h-[800px] opacity-[0.12] pointer-events-none" aria-hidden="true">
+          <div className="absolute top-16 left-[15%] w-96 h-96 rounded-full bg-primary blur-[140px] animate-float" />
+          <div className="absolute top-40 right-[15%] w-80 h-80 rounded-full bg-accent blur-[130px] animate-float" style={{ animationDelay: "1.5s" }} />
+          <div className="absolute top-64 left-[45%] w-64 h-64 rounded-full bg-violet-500 blur-[120px] animate-float" style={{ animationDelay: "3s" }} />
         </div>
       </section>
 
@@ -237,14 +238,18 @@ function LandingPage() {
               { icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", title: "Laundry", desc: "Order tracking, rate cards per item, express processing, and delivery management.", color: "text-teal-600 bg-teal-50" },
               { icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z", title: "Reports & Analytics", desc: "Occupancy trends, revenue insights, housekeeping efficiency, and payment tracking.", color: "text-rose-600 bg-rose-50" },
             ].map((feat, i) => (
-              <div key={i} className="group rounded-xl border bg-card p-6 hover:shadow-md hover:border-border transition-all duration-200">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${feat.color} transition-transform duration-200 group-hover:scale-110`}>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={feat.icon} />
-                  </svg>
+              <div key={i} className="group relative rounded-2xl border bg-card p-6 hover:shadow-xl hover:border-primary/15 transition-all duration-300 hover:-translate-y-1">
+                {/* Subtle gradient overlay on hover */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-transparent to-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${feat.color} transition-transform duration-300 group-hover:scale-110 group-hover:shadow-sm`}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={feat.icon} />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground mb-2">{feat.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feat.desc}</p>
                 </div>
-                <h3 className="text-base font-semibold text-foreground mb-2">{feat.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feat.desc}</p>
               </div>
             ))}
           </div>
@@ -263,15 +268,15 @@ function LandingPage() {
             </p>
           </div>
           {/* Mock dashboard */}
-          <div className="rounded-2xl border bg-card shadow-xl overflow-hidden">
+          <div className="rounded-2xl border bg-card shadow-2xl overflow-hidden ring-1 ring-black/[0.03]">
             <div className="border-b bg-muted/30 px-4 py-3 flex items-center gap-2">
               <div className="flex gap-1.5" aria-hidden="true">
-                <div className="w-3 h-3 rounded-full bg-red-400/70" />
-                <div className="w-3 h-3 rounded-full bg-amber-400/70" />
-                <div className="w-3 h-3 rounded-full bg-emerald-400/70" />
+                <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                <div className="w-3 h-3 rounded-full bg-amber-400/80" />
+                <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
               </div>
               <div className="flex-1 flex justify-center">
-                <div className="px-4 py-1 rounded-md bg-muted text-xs text-muted-foreground">dashboard.stayflow.app</div>
+                <div className="px-4 py-1 rounded-md bg-muted text-xs text-muted-foreground font-medium">dashboard.stayflow.app</div>
               </div>
             </div>
             <div className="p-6 lg:p-8 space-y-6">
@@ -363,7 +368,7 @@ function LandingPage() {
               { name: "Professional", price: "₹5,999", period: "/month", desc: "For growing businesses up to 50 rooms", features: ["Up to 50 rooms", "Everything in Starter", "Housekeeping module", "Laundry module", "Priority support", "API access"], popular: true, cta: "Start Free Trial" },
               { name: "Enterprise", price: "Custom", period: "", desc: "For hotel chains with multiple properties", features: ["Unlimited rooms", "Multi-property dashboard", "Dedicated account manager", "Custom integrations", "SLA guarantee", "On-premise option"], cta: "Contact Sales" },
             ].map((plan, i) => (
-              <div key={i} className={`rounded-2xl border p-8 flex flex-col ${plan.popular ? 'border-primary/50 shadow-lg ring-1 ring-primary/10 relative bg-card' : 'bg-card shadow-sm'}`}>
+              <div key={i} className={`group rounded-2xl border p-8 flex flex-col transition-all duration-300 hover:-translate-y-1 ${plan.popular ? 'border-primary/40 shadow-xl ring-1 ring-primary/10 relative bg-card hover:shadow-2xl' : 'bg-card shadow-sm hover:shadow-lg hover:border-primary/15'}`}>
                 {plan.popular && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                     <span className="px-3 py-1 text-xs font-semibold text-primary-foreground bg-primary rounded-full shadow-sm">Most Popular</span>
@@ -430,7 +435,7 @@ function LandingPage() {
       {/* Final CTA */}
       <section className="py-20 lg:py-28" aria-labelledby="cta-heading">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/85 p-10 sm:p-16 text-center relative overflow-hidden">
+          <div className="rounded-3xl bg-gradient-to-br from-primary via-primary/95 to-accent/70 p-10 sm:p-16 text-center relative overflow-hidden shadow-2xl">
             <div className="relative z-10">
               <h2 id="cta-heading" className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-primary-foreground">
                 Ready to simplify your operations?
@@ -439,9 +444,9 @@ function LandingPage() {
                 Join 50+ properties already saving hours every day with StayFlow.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link href="/register" className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-semibold bg-white text-primary rounded-xl hover:bg-white/95 shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary">
+                <Link href="/register" className="group inline-flex items-center gap-2 px-7 py-3.5 text-sm font-semibold bg-white text-primary rounded-xl hover:bg-white/95 shadow-lg hover:shadow-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary active:scale-[0.98]">
                   Start Free Trial
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </Link>

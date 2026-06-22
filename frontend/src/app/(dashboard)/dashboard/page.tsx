@@ -7,7 +7,7 @@ import Link from "next/link";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RoomBoard } from "@/components/dashboard/RoomBoard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { DashboardAlerts } from "@/components/dashboard/DashboardAlerts";
+import { DashboardAlerts, AlertItem } from "@/components/dashboard/DashboardAlerts";
 import { OperationsSummary } from "@/components/dashboard/OperationsSummary";
 import { MorningBrief } from "@/components/dashboard/MorningBrief";
 import { OnboardingChecklist } from "@/components/shared/OnboardingChecklist";
@@ -30,6 +30,15 @@ interface UnitStatus {
   guest_name?: string;
 }
 
+interface ReservationSummary {
+  id: string;
+  status: string;
+  check_in_date: string;
+  check_out_date: string;
+  unit_number: string;
+  guest_name: string;
+}
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(amount);
 }
@@ -41,7 +50,7 @@ export default function DashboardPage() {
   const [units, setUnits] = useState<UnitStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
 
   const propertyId = user?.property_id || "";
 
@@ -53,10 +62,11 @@ export default function DashboardPage() {
     try {
       const [data, unitData] = await Promise.all([
         api.get<DashboardMetrics>(`/api/v1/dashboard/${propertyId}`),
-        api.get<any>(`/api/v1/properties/${propertyId}/units`),
+        api.get<UnitStatus[] | { data: UnitStatus[] }>(`/api/v1/properties/${propertyId}/units`),
       ]);
       setMetrics(data);
-      setUnits(Array.isArray(unitData) ? unitData : unitData?.data || []);
+      const unitArr = unitData as UnitStatus[] | { data: UnitStatus[] };
+      setUnits(Array.isArray(unitArr) ? unitArr : unitArr?.data || []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard");
@@ -70,21 +80,21 @@ export default function DashboardPage() {
     if (!propertyId) return;
     const fetchAlerts = async () => {
       try {
-        const data = await api.get<any>("/api/v1/reservations", { property_id: propertyId, per_page: "100" });
-        const reservations = Array.isArray(data) ? data : data?.data || [];
+        const data = await api.get<ReservationSummary[] | { data: ReservationSummary[] }>("/api/v1/reservations", { property_id: propertyId, per_page: "100" });
+        const reservations: ReservationSummary[] = Array.isArray(data) ? data : (data as { data: ReservationSummary[] })?.data || [];
         const today = new Date().toISOString().split("T")[0];
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
-        const overdueCheckouts = reservations.filter((r: any) => r.status === "checked_in" && r.check_out_date <= today);
-        const tomorrowArrivals = reservations.filter((r: any) => r.check_in_date === tomorrow && (r.status === "confirmed" || r.status === "pending"));
+        const overdueCheckouts = reservations.filter((r) => r.status === "checked_in" && r.check_out_date <= today);
+        const tomorrowArrivals = reservations.filter((r) => r.check_in_date === tomorrow && (r.status === "confirmed" || r.status === "pending"));
 
-        const alertItems: any[] = [];
+        const alertItems: AlertItem[] = [];
         if (overdueCheckouts.length > 0) {
           alertItems.push({
             id: "overdue",
             type: "overdue",
             title: `Overdue Checkouts (${overdueCheckouts.length})`,
-            message: overdueCheckouts.map((r: any) => `${r.unit_number} — ${r.guest_name}`).join(", "),
+            message: overdueCheckouts.map((r) => `${r.unit_number} — ${r.guest_name}`).join(", "),
             actionLabel: "Check Out",
             actionHref: "/operations?tab=checkout",
           });
@@ -94,7 +104,7 @@ export default function DashboardPage() {
             id: "arriving",
             type: "arriving",
             title: `Tomorrow's Arrivals (${tomorrowArrivals.length})`,
-            message: tomorrowArrivals.map((r: any) => `${r.unit_number} — ${r.guest_name}`).join(", "),
+            message: tomorrowArrivals.map((r) => `${r.unit_number} — ${r.guest_name}`).join(", "),
             actionLabel: "Prepare",
             actionHref: "/housekeeping",
           });

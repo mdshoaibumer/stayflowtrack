@@ -120,8 +120,8 @@ export default function ReservationCalendar({
 
     try {
       const [calData, occData] = await Promise.all([
-        api.get<any>(`/api/v1/calendar/${propertyId}`, { start, end }),
-        api.get<any>(`/api/v1/calendar/${propertyId}/occupancy`, { date: start }).catch(() => null),
+        api.get<CalendarViewData>(`/api/v1/calendar/${propertyId}`, { start, end }),
+        api.get<OccupancyStats>(`/api/v1/calendar/${propertyId}/occupancy`, { date: start }).catch(() => null),
       ]);
 
       setCalendarData(calData);
@@ -134,6 +134,7 @@ export default function ReservationCalendar({
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- dates derived from startDate+daysToShow, api is stable
   }, [propertyId, startDate, daysToShow]);
 
   useEffect(() => {

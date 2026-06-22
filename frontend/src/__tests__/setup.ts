@@ -20,7 +20,8 @@ vi.mock('next/navigation', () => ({
 
 // Mock next/link
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => {
+  default: ({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: unknown }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const React = require('react');
     return React.createElement('a', { href, ...props }, children);
   },
@@ -37,6 +38,18 @@ const localStorageMock = (() => {
   };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+
+// Mock sessionStorage (used by AuthContext for token storage)
+const sessionStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+  };
+})();
+Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock });
 
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {

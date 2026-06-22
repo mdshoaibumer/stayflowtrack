@@ -5,7 +5,7 @@ import { useApi } from "@/hooks/useApi";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface WalkInFormProps {
-  onSuccess: (result: any) => void;
+  onSuccess: (result: Record<string, unknown>) => void;
   onCancel: () => void;
 }
 
@@ -45,9 +45,9 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
   // Load available units
   useEffect(() => {
     if (!propertyId) return;
-    api.get<any>(`/api/v1/properties/${propertyId}/units/search`, { status: "available" })
+    api.get<AvailableUnit[] | { data: AvailableUnit[] }>(`/api/v1/properties/${propertyId}/units/search`, { status: "available" })
       .then((data) => {
-        const list = Array.isArray(data) ? data : data?.data || [];
+        const list = Array.isArray(data) ? data : (data as { data: AvailableUnit[] })?.data || [];
         setUnits(list);
       })
       .catch(() => {});
@@ -83,7 +83,7 @@ export default function WalkInForm({ onSuccess, onCancel }: WalkInFormProps) {
         rate_per_night: form.rate_per_night,
         deposit_amount: form.deposit_amount,
       });
-      onSuccess(result);
+      onSuccess(result as Record<string, unknown>);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Walk-in failed");
     } finally {

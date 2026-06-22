@@ -3,6 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { AnimatedCounter } from "./AnimatedCounter";
+import Link from "next/link";
 
 type GlowColor = "green" | "blue" | "purple" | "orange" | "teal" | "red";
 
@@ -175,7 +176,6 @@ export function StatCard({
   );
 
   if (href) {
-    const Link = require("next/link").default;
     return <Link href={href} className="block">{content}</Link>;
   }
 

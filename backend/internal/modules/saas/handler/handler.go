@@ -289,19 +289,23 @@ func (h *Handler) RazorpayWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify webhook signature
+	// Verify webhook signature — ALWAYS required.
+	// If razorpay client is nil (misconfigured), reject all webhooks to fail closed.
 	signature := r.Header.Get("X-Razorpay-Signature")
-	if h.razorpay != nil {
-		if signature == "" {
-			h.log.Warn().Msg("missing razorpay webhook signature")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		if !h.razorpay.VerifyWebhookSignature(body, signature) {
-			h.log.Warn().Msg("invalid razorpay webhook signature")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
+	if h.razorpay == nil {
+		h.log.Error().Msg("razorpay webhook received but client not configured — rejecting")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	if signature == "" {
+		h.log.Warn().Msg("missing razorpay webhook signature")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if !h.razorpay.VerifyWebhookSignature(body, signature) {
+		h.log.Warn().Msg("invalid razorpay webhook signature")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 
 	var event struct {

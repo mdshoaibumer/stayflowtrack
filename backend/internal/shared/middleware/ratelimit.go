@@ -84,6 +84,12 @@ func (rl *RateLimiter) isAllowed(ip string) bool {
 // NOTE: Relies on chi/middleware.RealIP being applied upstream to set r.RemoteAddr correctly.
 func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Exempt health/metrics endpoints from rate limiting (used by load balancers/monitors)
+		if r.URL.Path == "/health" || r.URL.Path == "/ready" || r.URL.Path == "/metrics" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Use RemoteAddr which is already set by RealIP middleware upstream.
 		// Do NOT read X-Forwarded-For here — it's attacker-controlled and
 		// would override the trusted IP that RealIP already extracted.

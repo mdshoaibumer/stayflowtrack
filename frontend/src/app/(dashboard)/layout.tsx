@@ -6,6 +6,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import TopNav from "@/components/layout/TopNav";
 import DemoDataDialog from "@/components/shared/DemoDataDialog";
 import CommandPalette from "@/components/shared/CommandPalette";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -47,7 +48,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col min-w-0">
           <TopNav onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
           <main id="main-content" className="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </main>
         </div>
 

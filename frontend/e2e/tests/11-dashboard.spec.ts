@@ -38,10 +38,10 @@ test.describe("Dashboard", () => {
     const pJson = await pResp.json();
     const pid = (pJson.data && pJson.data.length > 0) ? pJson.data[0].id : null;
 
-    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
+    page.on('console', (msg: { type: () => string; text: () => string }) => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
 
     await page.goto("/");
-    await page.evaluate(({ token, email, pid }) => {
+    await page.evaluate(({ token, email, pid }: { token: string; email: string; pid: string | null }) => {
       localStorage.setItem("demo_data_shown", "true");
       localStorage.setItem("access_token", token);
       localStorage.setItem("user", JSON.stringify({

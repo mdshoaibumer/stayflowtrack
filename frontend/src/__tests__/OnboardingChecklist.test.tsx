@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 
 describe('OnboardingChecklist', () => {
@@ -96,7 +96,7 @@ describe('OnboardingChecklist', () => {
     render(<OnboardingChecklist />);
     const link = screen.getByText('Set up your property').closest('a')!;
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
-    const prevented = !link.dispatchEvent(clickEvent);
+    link.dispatchEvent(clickEvent);
     // Completed steps should have reduced opacity
     expect(link.className).toContain('opacity-60');
   });

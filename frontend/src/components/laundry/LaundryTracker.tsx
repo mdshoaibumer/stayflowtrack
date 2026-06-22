@@ -39,8 +39,8 @@ export default function LaundryTracker({ propertyId }: LaundryTrackerProps) {
     if (filter) params.status = filter;
 
     try {
-      const data = await api.get<any>("/api/v1/laundry/orders", params);
-      setOrders(Array.isArray(data) ? data : data?.data || []);
+      const data = await api.get<LaundryOrder[] | { data: LaundryOrder[] }>("/api/v1/laundry/orders", params);
+      setOrders(Array.isArray(data) ? data : (data as { data: LaundryOrder[] })?.data || []);
     } catch {
       // Error handled by useApi (401 logout)
     }

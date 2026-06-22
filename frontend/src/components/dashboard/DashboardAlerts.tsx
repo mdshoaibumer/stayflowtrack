@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface AlertItem {
+export interface AlertItem {
   id: string;
   type: "overdue" | "arriving" | "warning";
   title: string;

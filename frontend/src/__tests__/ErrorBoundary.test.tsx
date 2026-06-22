@@ -52,7 +52,7 @@ describe('ErrorBoundary', () => {
   });
 
   it('resets error state when Try Again is clicked', () => {
-    const { rerender } = render(
+    render(
       <ErrorBoundary>
         <ThrowingComponent shouldThrow={true} />
       </ErrorBoundary>
@@ -78,7 +78,7 @@ describe('ErrorBoundary', () => {
 
   it('shows error message in development mode', () => {
     const originalEnv = process.env.NODE_ENV;
-    // @ts-ignore
+    // @ts-expect-error -- overriding readonly NODE_ENV for test
     process.env.NODE_ENV = 'development';
     render(
       <ErrorBoundary>
@@ -86,7 +86,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
     expect(screen.getByText('Test explosion')).toBeInTheDocument();
-    // @ts-ignore
+    // @ts-expect-error -- restoring original NODE_ENV
     process.env.NODE_ENV = originalEnv;
   });
 
@@ -102,7 +102,7 @@ describe('ErrorBoundary', () => {
 
   it('does not show error details in production', () => {
     const originalEnv = process.env.NODE_ENV;
-    // @ts-ignore
+    // @ts-expect-error -- overriding readonly NODE_ENV for test
     process.env.NODE_ENV = 'production';
     render(
       <ErrorBoundary>
@@ -110,7 +110,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
     expect(screen.queryByText('Test explosion')).not.toBeInTheDocument();
-    // @ts-ignore
+    // @ts-expect-error -- restoring original NODE_ENV
     process.env.NODE_ENV = originalEnv;
   });
 

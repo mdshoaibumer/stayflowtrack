@@ -21,7 +21,7 @@ function formatCurrency(amount: number): string {
 }
 
 function getToken(): string {
-  if (typeof window !== "undefined") return localStorage.getItem("access_token") || "";
+  if (typeof window !== "undefined") return sessionStorage.getItem("sf_at") || "";
   return "";
 }
 

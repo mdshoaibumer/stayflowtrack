@@ -28,7 +28,7 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [docFile, setDocFile] = useState<File | null>(null);
-  const [docUploading, setDocUploading] = useState(false);
+  const [, setDocUploading] = useState(false);
   const [waiveDeposit, setWaiveDeposit] = useState(false);
   const [roomStatus, setRoomStatus] = useState<string | null>(null);
   const [form, setForm] = useState<CheckInData>({
@@ -45,10 +45,10 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
   // Check room readiness
   useEffect(() => {
     if (!unitId || !user?.property_id) return;
-    api.get<any>(`/api/v1/properties/${user.property_id}/units`)
+    api.get<Array<{ id: string; status: string }> | { data: Array<{ id: string; status: string }> }>(`/api/v1/properties/${user.property_id}/units`)
       .then((data) => {
-        const units = Array.isArray(data) ? data : data?.data || [];
-        const unit = units.find((u: any) => u.id === unitId);
+        const units = Array.isArray(data) ? data : (data as { data: Array<{ id: string; status: string }> })?.data || [];
+        const unit = units.find((u) => u.id === unitId);
         if (unit) setRoomStatus(unit.status);
       })
       .catch(() => {});
@@ -80,7 +80,7 @@ export function CheckInForm({ reservationId, unitId, onSubmit, onCancel }: Check
       const formData = new FormData();
       formData.append("file", docFile);
       formData.append("document_type", form.id_document_type);
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('sf_at') : '';
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/guests/${guestId}/documents`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -230,6 +230,15 @@ interface BillSummary {
   payments: { payment_type: string; payment_method: string; amount: number; reference: string; paid_at: string }[];
 }
 
+interface LaundryOrder {
+  id: string;
+  order_number: string;
+  status: string;
+  unit_number: string;
+  grand_total: number;
+  posted_to_folio: boolean;
+}
+
 export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: CheckOutFormProps) {
   const api = useApi();
   const [loading, setLoading] = useState(false);
@@ -239,7 +248,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
   const [summary, setSummary] = useState<BillSummary | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [lateCharge, setLateCharge] = useState(0);
-  const [pendingLaundry, setPendingLaundry] = useState<any[]>([]);
+  const [pendingLaundry, setPendingLaundry] = useState<LaundryOrder[]>([]);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -252,13 +261,13 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
     setLoadingSummary(true);
     Promise.all([
       api.get<BillSummary>("/api/v1/operations/pre-checkout", { reservation_id: reservationId }),
-      api.get<any>("/api/v1/laundry/orders", { property_id: user?.property_id || "", status: "received,washing,ready", per_page: "50" }).catch(() => ({ data: [] })),
+      api.get<LaundryOrder[] | { data: LaundryOrder[] }>("/api/v1/laundry/orders", { property_id: user?.property_id || "", status: "received,washing,ready", per_page: "50" }).catch(() => ({ data: [] as LaundryOrder[] })),
     ])
       .then(([billData, laundryData]) => {
         setSummary(billData);
         // Filter laundry orders for this guest/unit
-        const allOrders = Array.isArray(laundryData) ? laundryData : laundryData?.data || [];
-        const pending = allOrders.filter((o: any) => o.unit_number === billData.unit_number && o.status !== "delivered");
+        const allOrders = Array.isArray(laundryData) ? laundryData : (laundryData as { data: LaundryOrder[] })?.data || [];
+        const pending = allOrders.filter((o) => o.unit_number === billData.unit_number && o.status !== "delivered");
         setPendingLaundry(pending);
         setPaymentAmount(Math.max(0, Number(billData.balance)));
         setError(null);
@@ -388,7 +397,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
             <p className="text-sm font-medium text-yellow-800">Pending Laundry ({pendingLaundry.length} order{pendingLaundry.length > 1 ? "s" : ""})</p>
           </div>
           <div className="space-y-1 ml-6">
-            {pendingLaundry.map((order: any, i: number) => (
+            {pendingLaundry.map((order, i: number) => (
               <div key={i} className="flex items-center justify-between text-xs text-yellow-700 py-0.5">
                 <span>
                   #{order.order_number} — Status: <span className="font-medium capitalize">{order.status}</span>
@@ -402,7 +411,7 @@ export function CheckOutForm({ reservationId, guestName, onSubmit, onCancel }: C
                         // Refresh pre-checkout summary
                         const billData = await api.get<BillSummary>("/api/v1/operations/pre-checkout", { reservation_id: reservationId });
                         setSummary(billData);
-                        setPendingLaundry((prev: any[]) => prev.map((o: any) => o.id === order.id ? { ...o, posted_to_folio: true } : o));
+                        setPendingLaundry((prev) => prev.map((o) => o.id === order.id ? { ...o, posted_to_folio: true } : o));
                       } catch { /* silent */ }
                     }}
                     className="px-2 py-0.5 text-[10px] bg-yellow-600 text-white rounded hover:bg-yellow-700"

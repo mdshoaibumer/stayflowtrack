@@ -13,14 +13,14 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', loading, disabled, children, ...props }, ref) => {
     const variants: Record<string, string> = {
-      default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm',
-      destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm',
-      outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400',
-      secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-      ghost: 'text-gray-700 hover:bg-gray-100',
+      default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md active:scale-[0.98]',
+      destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm hover:shadow-md active:scale-[0.98]',
+      outline: 'border border-border bg-card text-foreground hover:bg-muted hover:border-primary/20 active:scale-[0.98]',
+      secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-[0.98]',
+      ghost: 'text-foreground hover:bg-muted',
       link: 'text-primary underline-offset-4 hover:underline p-0 h-auto',
-      success: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm',
-      warning: 'bg-orange-600 text-white hover:bg-orange-700 shadow-sm',
+      success: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-md active:scale-[0.98]',
+      warning: 'bg-orange-600 text-white hover:bg-orange-700 shadow-sm hover:shadow-md active:scale-[0.98]',
     };
 
     const sizes: Record<string, string> = {
@@ -34,7 +34,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         className={cn(
-          'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors',
+          'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium',
+          'transition-all duration-150 ease-out',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           'disabled:pointer-events-none disabled:opacity-50',
           variants[variant],

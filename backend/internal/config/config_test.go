@@ -66,7 +66,8 @@ func TestLoad_MissingJWTSecret(t *testing.T) {
 func TestLoad_ProductionValidation_WeakSecret(t *testing.T) {
 	setEnvs(t, map[string]string{
 		"APP_ENV":            "production",
-		"DB_PASSWORD":        "strong-password",
+		"DB_PASSWORD":        "a-production-db-credential-minimum-32chars-long-ok",
+		"DB_SSL_MODE":        "require",
 		"JWT_ACCESS_SECRET":  "short",
 		"JWT_REFRESH_SECRET": "short",
 	})
@@ -81,7 +82,8 @@ func TestLoad_ProductionValidation_SameSecrets(t *testing.T) {
 	secret := "this-is-a-very-long-secret-that-passes-the-32-char-check"
 	setEnvs(t, map[string]string{
 		"APP_ENV":            "production",
-		"DB_PASSWORD":        "strong-password",
+		"DB_PASSWORD":        "a-production-db-credential-minimum-32chars-long-ok",
+		"DB_SSL_MODE":        "require",
 		"JWT_ACCESS_SECRET":  secret,
 		"JWT_REFRESH_SECRET": secret,
 	})
@@ -95,7 +97,8 @@ func TestLoad_ProductionValidation_SameSecrets(t *testing.T) {
 func TestLoad_ProductionValidation_UnsafeDefault(t *testing.T) {
 	setEnvs(t, map[string]string{
 		"APP_ENV":            "production",
-		"DB_PASSWORD":        "strong-password",
+		"DB_PASSWORD":        "a-production-db-credential-minimum-32chars-long-ok",
+		"DB_SSL_MODE":        "require",
 		"JWT_ACCESS_SECRET":  "dev-access-secret-change-in-production-min-32-chars",
 		"JWT_REFRESH_SECRET": "prod-refresh-secret-something-different-and-long-enough",
 	})
@@ -109,7 +112,7 @@ func TestLoad_ProductionValidation_UnsafeDefault(t *testing.T) {
 func TestLoad_ProductionValidation_Valid(t *testing.T) {
 	setEnvs(t, map[string]string{
 		"APP_ENV":            "production",
-		"DB_PASSWORD":        "strong-password",
+		"DB_PASSWORD":        "a-production-db-credential-minimum-32chars-long-ok",
 		"DB_SSL_MODE":        "require",
 		"JWT_ACCESS_SECRET":  "production-access-secret-that-is-long-enough-and-secure",
 		"JWT_REFRESH_SECRET": "production-refresh-secret-that-is-also-long-and-different",

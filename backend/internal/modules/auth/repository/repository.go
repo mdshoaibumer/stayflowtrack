@@ -144,6 +144,17 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*domain.
 	return &u, nil
 }
 
+// CountUsersByEmail returns how many users exist with the given email across all tenants.
+// Used to detect ambiguous logins when tenant_slug is not provided.
+func (r *Repository) CountUsersByEmail(ctx context.Context, email string) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE email = $1`, email).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count users by email: %w", err)
+	}
+	return count, nil
+}
+
 // GetUserByEmailAndTenant looks up a user scoped to a specific tenant slug.
 // This prevents cross-tenant authentication.
 func (r *Repository) GetUserByEmailAndTenant(ctx context.Context, email, tenantSlug string) (*domain.User, error) {

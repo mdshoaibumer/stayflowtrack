@@ -79,7 +79,7 @@ export function QuickActions() {
       transition={{ duration: 0.4, delay: 0.2 }}
       className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-2"
     >
-      {actions.map((action, idx) => (
+      {actions.map((action) => (
         <Link key={action.href} href={action.href}>
           <motion.div
             whileHover={{ scale: 1.05, y: -2 }}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -84,6 +85,54 @@ var allowedContentTypes = map[string]bool{
 }
 
 const maxFileSize = 10 * 1024 * 1024 // 10MB
+
+// magicBytes maps content types to their expected file signatures (magic bytes).
+// This prevents file type spoofing where the declared Content-Type doesn't match actual content.
+var magicBytes = map[string][][]byte{
+	"image/jpeg":      {{0xFF, 0xD8, 0xFF}},
+	"image/png":       {{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}},
+	"image/webp":      {{0x52, 0x49, 0x46, 0x46}}, // RIFF header (WebP starts with RIFF....WEBP)
+	"application/pdf": {{0x25, 0x50, 0x44, 0x46}}, // %PDF
+}
+
+// validateMagicBytes reads the first bytes of the file and verifies they match
+// the expected magic bytes for the declared content type.
+func validateMagicBytes(reader io.Reader, contentType string) (io.Reader, error) {
+	signatures, ok := magicBytes[contentType]
+	if !ok {
+		return nil, fmt.Errorf("no magic byte signature for content type: %s", contentType)
+	}
+
+	// Find the longest signature to determine how many bytes to read
+	maxLen := 0
+	for _, sig := range signatures {
+		if len(sig) > maxLen {
+			maxLen = len(sig)
+		}
+	}
+
+	header := make([]byte, maxLen)
+	n, err := io.ReadFull(reader, header)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return nil, fmt.Errorf("read file header: %w", err)
+	}
+	header = header[:n]
+
+	matched := false
+	for _, sig := range signatures {
+		if len(header) >= len(sig) && bytes.Equal(header[:len(sig)], sig) {
+			matched = true
+			break
+		}
+	}
+
+	if !matched {
+		return nil, fmt.Errorf("file content does not match declared type %s", contentType)
+	}
+
+	// Return a new reader that replays the header bytes followed by the rest
+	return io.MultiReader(bytes.NewReader(header), reader), nil
+}
 
 func (s *Service) CreateGuest(ctx context.Context, tenantID uuid.UUID, input CreateGuestInput) (*domain.Guest, error) {
 	guest := &domain.Guest{
@@ -173,8 +222,15 @@ func (s *Service) UploadDocument(ctx context.Context, input UploadDocumentInput)
 		return nil, apperrors.BadRequest("file size exceeds 10MB limit")
 	}
 
+	// Validate file magic bytes match declared content type (prevents spoofing)
+	validatedReader, err := validateMagicBytes(input.Reader, input.ContentType)
+	if err != nil {
+		return nil, apperrors.BadRequest("file content does not match declared type — possible file type spoofing")
+	}
+	input.Reader = validatedReader
+
 	// Verify guest exists
-	_, err := s.repo.GetGuestByID(ctx, input.GuestID, input.TenantID)
+	_, err = s.repo.GetGuestByID(ctx, input.GuestID, input.TenantID)
 	if err != nil {
 		return nil, err
 	}

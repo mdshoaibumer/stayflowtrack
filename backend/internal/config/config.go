@@ -109,7 +109,7 @@ func Load() (*Config, error) {
 			User:         getEnv("DB_USER", "stayflow"),
 			Password:     getEnv("DB_PASSWORD", ""),
 			Name:         getEnv("DB_NAME", "stayflow_track"),
-			SSLMode:      getEnv("DB_SSL_MODE", "disable"),
+			SSLMode:      getEnv("DB_SSL_MODE", "require"),
 			MaxOpenConns: maxOpenConns,
 			MaxIdleConns: maxIdleConns,
 			MaxLifetime:  maxLifetime,
@@ -172,6 +172,9 @@ func (c *Config) validate() error {
 		if c.Database.SSLMode == "disable" {
 			return fmt.Errorf("DB_SSL_MODE must not be 'disable' in production")
 		}
+		if len(c.Database.Password) < 32 {
+			return fmt.Errorf("DB_PASSWORD must be at least 32 characters in production")
+		}
 		if len(c.JWT.AccessSecret) < 32 {
 			return fmt.Errorf("JWT_ACCESS_SECRET must be at least 32 characters in production")
 		}
@@ -184,6 +187,10 @@ func (c *Config) validate() error {
 		if strings.Contains(strings.ToLower(c.JWT.AccessSecret), "dev") ||
 			strings.Contains(strings.ToLower(c.JWT.AccessSecret), "change") {
 			return fmt.Errorf("JWT_ACCESS_SECRET contains unsafe default value")
+		}
+		if strings.Contains(strings.ToLower(c.Database.Password), "change") ||
+			strings.Contains(strings.ToLower(c.Database.Password), "password") {
+			return fmt.Errorf("DB_PASSWORD contains unsafe default value")
 		}
 	}
 	return nil

@@ -233,8 +233,19 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (*LoginResult, er
 		// Tenant-scoped login (prevents cross-tenant access)
 		user, err = s.repo.GetUserByEmailAndTenant(ctx, input.Email, input.TenantSlug)
 	} else {
-		// Global lookup (backward compatible — will fail if email exists in multiple tenants)
+		// Global lookup — only succeeds if email is globally unique.
+		// If email exists in multiple tenants, return ambiguous error requiring tenant_slug.
 		user, err = s.repo.GetUserByEmail(ctx, input.Email)
+		if user != nil {
+			// Verify this email doesn't exist in multiple tenants
+			count, countErr := s.repo.CountUsersByEmail(ctx, input.Email)
+			if countErr != nil {
+				return nil, apperrors.Internal(countErr)
+			}
+			if count > 1 {
+				return nil, apperrors.BadRequest("multiple accounts found for this email — please provide tenant_slug to specify which organization")
+			}
+		}
 	}
 	if err != nil {
 		return nil, apperrors.Internal(err)

@@ -99,7 +99,7 @@ jobs:
         run: go vet ./...
 
   # ─────────────────────────────────────────────────────────
-  # Frontend: Build & Lint
+  # Frontend: Build, Lint & Test
   # ─────────────────────────────────────────────────────────
   frontend:
     name: Frontend Build
@@ -115,11 +115,24 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm install
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
 
       - name: Type check
         working-directory: frontend
         run: npx tsc --noEmit
+
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test -- --reporter=default
+
+      - name: npm audit (security)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
       - name: Build
         working-directory: frontend
@@ -162,6 +175,107 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+
+  # ─────────────────────────────────────────────────────────
+  # E2E Tests: Full stack integration
+  # ─────────────────────────────────────────────────────────
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-build, frontend]
+    if: github.event_name == 'push'
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: stayflow
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: stayflow_track
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install migrate
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xz
+          sudo mv migrate /usr/local/bin/
+
+      - name: Run migrations
+        run: |
+          migrate -path backend/migrations \
+            -database "postgres://stayflow:testpassword@localhost:5432/stayflow_track?sslmode=disable" \
+            up
+
+      - name: Build & start backend
+        working-directory: backend
+        env:
+          APP_ENV: development
+          APP_PORT: "8080"
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_USER: stayflow
+          DB_PASSWORD: testpassword
+          DB_NAME: stayflow_track
+          DB_SSL_MODE: disable
+          JWT_ACCESS_SECRET: e2e-test-access-secret-minimum-32-chars
+          JWT_REFRESH_SECRET: e2e-test-refresh-secret-minimum-32-chars-different
+          JWT_ISSUER: stayflow-track
+          CORS_ALLOWED_ORIGINS: http://localhost:3000
+          LOG_LEVEL: info
+          LOG_FORMAT: json
+          STORAGE_PROVIDER: s3
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: stayflow-documents
+          STORAGE_ACCESS_KEY_ID: minioadmin
+          STORAGE_SECRET_ACCESS_KEY: minioadmin123
+          STORAGE_USE_PATH_STYLE: "true"
+        run: |
+          go build -o ./server ./cmd/server
+          nohup ./server &
+          sleep 3
+          curl -f http://localhost:8080/health || exit 1
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests (headless)
+        working-directory: frontend
+        env:
+          CI: "true"
+          E2E_BASE_URL: http://localhost:3000
+          E2E_API_URL: http://localhost:8080
+        run: npx playwright test --reporter=html
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
 
   # ─────────────────────────────────────────────────────────
   # Migration validation

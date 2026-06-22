@@ -19,6 +19,7 @@ export interface APIResponse<T> {
 class APIClient {
   private baseURL: string;
   private accessToken: string | null = null;
+  private requestTimeout = 15_000; // 15 second timeout for all requests
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -43,14 +44,34 @@ class APIClient {
       headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
 
-    const response = await fetch(`${this.baseURL}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      ...options,
-    });
+    // Apply request timeout via AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
 
-    return response.json();
+    try {
+      const response = await fetch(`${this.baseURL}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+        ...options,
+      });
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return {
+          success: false,
+          error: { code: "TIMEOUT", message: "Request timed out. Please try again." },
+        };
+      }
+      return {
+        success: false,
+        error: { code: "NETWORK_ERROR", message: "Network error. Please check your connection." },
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async get<T>(path: string): Promise<APIResponse<T>> {

@@ -11,6 +11,42 @@ interface RequestOptions {
   params?: Record<string, string>;
 }
 
+// Map of known error codes to user-friendly messages
+const ERROR_MESSAGES: Record<string, string> = {
+  UNAUTHORIZED: "Please log in again.",
+  FORBIDDEN: "You don't have permission to perform this action.",
+  NOT_FOUND: "The requested resource was not found.",
+  CONFLICT: "This operation conflicts with existing data.",
+  RATE_LIMITED: "Too many requests. Please wait and try again.",
+  VALIDATION_FAILED: "Please check your input and try again.",
+};
+
+/**
+ * Sanitize error messages from the API to prevent information leakage.
+ * Only expose known safe messages; fallback to generic message for unknown errors.
+ */
+function sanitizeErrorMessage(data: { error?: { code?: string; message?: string } }, status: number): string {
+  const code = data?.error?.code;
+  if (code && ERROR_MESSAGES[code]) {
+    return ERROR_MESSAGES[code];
+  }
+  // Only pass through validation messages (they're user-facing by design)
+  if (status === 400 && data?.error?.message) {
+    // Strip anything that looks like internal details (stack traces, SQL, etc.)
+    const msg = data.error.message;
+    if (msg.length < 200 && !msg.includes("sql") && !msg.includes("panic") && !msg.includes("runtime")) {
+      return msg;
+    }
+  }
+  // Generic messages by status code
+  if (status === 404) return "Resource not found.";
+  if (status === 409) return "This conflicts with existing data.";
+  if (status === 422) return "Invalid input. Please check your data.";
+  if (status === 429) return "Too many requests. Please slow down.";
+  if (status >= 500) return "An unexpected error occurred. Please try again later.";
+  return "Request failed. Please try again.";
+}
+
 export function useApi() {
   const { accessToken, logout } = useAuth();
 
@@ -45,7 +81,7 @@ export function useApi() {
       const data = await resp.json();
 
       if (!resp.ok) {
-        throw new Error(data.error?.message || `Request failed (${resp.status})`);
+        throw new Error(sanitizeErrorMessage(data, resp.status));
       }
 
       return data.data ?? data;
@@ -86,7 +122,7 @@ export function useApi() {
     }
     const data = await resp.json();
     if (!resp.ok) {
-      throw new Error(data.error?.message || `Upload failed (${resp.status})`);
+      throw new Error(sanitizeErrorMessage(data, resp.status));
     }
     return data.data ?? data;
   }, [accessToken, logout]);

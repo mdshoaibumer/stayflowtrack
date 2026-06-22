@@ -51,8 +51,8 @@ export default function HousekeepingBoard({ propertyId }: HousekeepingBoardProps
     if (filter) params.status = filter;
 
     try {
-      const data = await api.get<any>("/api/v1/housekeeping/tasks", params);
-      setTasks(Array.isArray(data) ? data : data?.data || []);
+      const data = await api.get<Task[] | { data: Task[] }>("/api/v1/housekeeping/tasks", params);
+      setTasks(Array.isArray(data) ? data : (data as { data: Task[] })?.data || []);
     } catch {
       // Error handled by useApi (401 logout)
     }

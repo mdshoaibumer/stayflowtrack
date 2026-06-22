@@ -21,7 +21,7 @@ describe('Button Component', () => {
     render(<Button variant="outline">Outline</Button>);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('border');
-    expect(btn.className).toContain('bg-white');
+    expect(btn.className).toContain('bg-card');
   });
 
   it('renders secondary variant', () => {
@@ -33,7 +33,7 @@ describe('Button Component', () => {
   it('renders ghost variant', () => {
     render(<Button variant="ghost">Ghost</Button>);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('hover:bg-gray-100');
+    expect(btn.className).toContain('hover:bg-muted');
   });
 
   it('renders link variant', () => {
@@ -146,8 +146,8 @@ describe('Button Component', () => {
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
   });
 
-  it('has transition-colors class', () => {
+  it('has transition-all class', () => {
     render(<Button>Trans</Button>);
-    expect(screen.getByRole('button').className).toContain('transition-colors');
+    expect(screen.getByRole('button').className).toContain('transition-all');
   });
 });

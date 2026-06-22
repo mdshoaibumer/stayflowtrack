@@ -42,17 +42,18 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
   useEffect(() => {
     if (!user?.property_id) return;
     const propertyId = user.property_id;
+    interface ReservationEntry { reservation_id?: string; id?: string; status: string; check_in_date: string; check_out_date: string; guest_name: string; unit_number: string; }
     const fetchNotifs = async () => {
       try {
-        const data = await api.get<any>("/api/v1/reservations", { property_id: propertyId, per_page: "100" });
-        const reservations = Array.isArray(data) ? data : data?.data || [];
+        const data = await api.get<ReservationEntry[] | { data: ReservationEntry[] }>("/api/v1/reservations", { property_id: propertyId, per_page: "100" });
+        const reservations: ReservationEntry[] = Array.isArray(data) ? data : (data as { data: ReservationEntry[] })?.data || [];
         const today = new Date().toISOString().split("T")[0];
         const now = new Date();
         const notifs: Notification[] = [];
 
         // Overdue checkouts
-        const overdue = reservations.filter((r: any) => r.status === "checked_in" && r.check_out_date <= today);
-        overdue.forEach((r: any) => {
+        const overdue = reservations.filter((r) => r.status === "checked_in" && r.check_out_date <= today);
+        overdue.forEach((r) => {
           notifs.push({
             id: `overdue-${r.reservation_id || r.id}`,
             type: "warning",
@@ -63,7 +64,7 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
         });
 
         // Expected arrivals not yet checked in
-        const pendingArrivals = reservations.filter((r: any) => r.check_in_date === today && (r.status === "confirmed" || r.status === "pending"));
+        const pendingArrivals = reservations.filter((r) => r.check_in_date === today && (r.status === "confirmed" || r.status === "pending"));
         if (pendingArrivals.length > 0 && now.getHours() >= 14) {
           notifs.push({
             id: "arrivals-pending",
@@ -76,7 +77,7 @@ export default function TopNav({ onMenuToggle }: TopNavProps) {
 
         // Tomorrow arrivals reminder
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-        const tomorrowArrivals = reservations.filter((r: any) => r.check_in_date === tomorrow && (r.status === "confirmed" || r.status === "pending"));
+        const tomorrowArrivals = reservations.filter((r) => r.check_in_date === tomorrow && (r.status === "confirmed" || r.status === "pending"));
         if (tomorrowArrivals.length > 0) {
           notifs.push({
             id: "tomorrow-arrivals",
