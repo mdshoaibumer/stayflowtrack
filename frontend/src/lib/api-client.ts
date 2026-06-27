@@ -44,6 +44,18 @@ class APIClient {
       headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
 
+    const methodUpper = method.toUpperCase();
+    if (!["GET", "HEAD", "OPTIONS"].includes(methodUpper) && typeof document !== "undefined") {
+      let match = document.cookie.match(new RegExp('(^| )_csrf=([^;]+)'));
+      if (!match) {
+        await fetch(`${this.baseURL}/health`, { method: "GET", credentials: "include" });
+        match = document.cookie.match(new RegExp('(^| )_csrf=([^;]+)'));
+      }
+      if (match) {
+        headers["X-CSRF-Token"] = match[2];
+      }
+    }
+
     // Apply request timeout via AbortController
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
@@ -52,6 +64,7 @@ class APIClient {
       const response = await fetch(`${this.baseURL}${path}`, {
         method,
         headers,
+        credentials: "include",
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
         ...options,

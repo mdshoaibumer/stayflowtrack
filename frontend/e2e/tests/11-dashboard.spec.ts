@@ -5,7 +5,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { generateTestUser } from "../helpers/test-config";
+import { generateTestUser, TEST_CONFIG } from "../helpers/test-config";
 import { registerTenant } from "../helpers/api-helpers";
 import { loadDemoData } from "../helpers/demo-data";
 
@@ -32,7 +32,7 @@ test.describe("Dashboard", () => {
 
   async function login(page: any) {
     // Fetch property using test API helper configuration
-    const pResp = await fetch(`http://localhost:8080/api/v1/properties`, {
+    const pResp = await fetch(`${TEST_CONFIG.API_URL}/api/v1/properties`, {
       headers: { Authorization: `Bearer ${authToken}` }
     });
     const pJson = await pResp.json();
@@ -42,9 +42,9 @@ test.describe("Dashboard", () => {
 
     await page.goto("/");
     await page.evaluate(({ token, email, pid }: { token: string; email: string; pid: string | null }) => {
-      localStorage.setItem("demo_data_shown", "true");
-      localStorage.setItem("access_token", token);
-      localStorage.setItem("user", JSON.stringify({
+      sessionStorage.setItem("sf_demo_data_shown", "true");
+      sessionStorage.setItem("sf_at", token);
+      sessionStorage.setItem("sf_user", JSON.stringify({
         id: "test-user-id",
         email: email,
         full_name: "Test User",

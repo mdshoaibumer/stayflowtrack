@@ -40,10 +40,8 @@ function LandingPage() {
       <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border/30 shadow-sm" role="navigation" aria-label="Main navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md" aria-hidden="true">
-              <svg className="w-4 h-4 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+            <div className="w-8 h-8 flex items-center justify-center" aria-hidden="true">
+              <img src="/logo.png" alt="StayFlow Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-lg font-bold tracking-tight">StayFlow</span>
           </div>
@@ -469,10 +467,8 @@ function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center" aria-hidden="true">
-                <svg className="w-3.5 h-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+              <div className="w-7 h-7 flex items-center justify-center" aria-hidden="true">
+                <img src="/logo.png" alt="StayFlow Logo" className="w-full h-full object-contain" />
               </div>
               <span className="text-sm font-semibold">StayFlow</span>
             </div>

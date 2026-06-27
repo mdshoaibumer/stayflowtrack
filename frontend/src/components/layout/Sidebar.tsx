@@ -79,8 +79,8 @@ export default function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarP
       {/* Logo */}
       <div className="flex items-center h-14 px-4 border-b border-border/50">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">SF</span>
+          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+            <img src="/logo.png" alt="StayFlow Logo" className="w-full h-full object-contain" />
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold text-foreground truncate">StayFlow</span>

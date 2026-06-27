@@ -10,17 +10,37 @@ interface ApiResponse<T = unknown> {
   error?: { message: string; code: string };
 }
 
+let globalCsrfToken = "";
+let globalCookies = "";
+
+async function ensureCsrf() {
+  if (globalCsrfToken) return;
+  const resp = await fetch(`${TEST_CONFIG.API_URL}/health`);
+  const setCookie = resp.headers.get("set-cookie");
+  if (setCookie) {
+    const match = setCookie.match(/_csrf=([^;]+)/);
+    if (match) {
+      globalCsrfToken = match[1];
+      globalCookies = `_csrf=${match[1]}`;
+    }
+  }
+}
+
 async function apiCall<T>(
   method: string,
   path: string,
   body?: unknown,
   token?: string
 ): Promise<ApiResponse<T>> {
+  await ensureCsrf();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  } else if (globalCsrfToken && !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())) {
+    headers["X-CSRF-Token"] = globalCsrfToken;
+    headers["Cookie"] = globalCookies;
   }
 
   const resp = await fetch(`${TEST_CONFIG.API_URL}${path}`, {
@@ -156,4 +176,25 @@ export async function checkHealth() {
   } catch {
     return false;
   }
+}
+
+/**
+ * Create a user (staff)
+ */
+export async function createUser(
+  token: string,
+  data: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    role_name: string;
+  }
+) {
+  return apiCall<{ id: string; email: string; role_name: string }>(
+    "POST",
+    "/api/v1/users",
+    data,
+    token
+  );
 }

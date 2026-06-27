@@ -38,7 +38,7 @@ test.describe("Reservation Extended", () => {
       check_in_date: nextWeek.toISOString().split("T")[0],
       check_out_date: checkout.toISOString().split("T")[0],
       rate_per_night: 2500,
-      booking_source: "website",
+      booking_source: "other",
     });
     reservationId = res.data?.id;
   });

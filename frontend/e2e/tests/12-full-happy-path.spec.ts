@@ -30,8 +30,8 @@ test.describe.serial("Full Happy Path - End to End", () => {
 
     await expect(page).toHaveURL(/dashboard/, { timeout: 15_000 });
 
-    // Extract token from localStorage
-    authToken = await page.evaluate(() => localStorage.getItem("access_token") || "");
+    // Extract token from sessionStorage
+    authToken = await page.evaluate(() => sessionStorage.getItem("sf_at") || "");
     expect(authToken).toBeTruthy();
   });
 
