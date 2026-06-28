@@ -253,6 +253,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!resp.ok) {
       throw new Error(data.error?.message || "Registration failed");
     }
+
+    // Clear demo seeder flags on fresh registration
+    localStorage.removeItem("demo_data_shown");
+    localStorage.removeItem("demo_data_loaded");
+
     // Auto-login after register
     if (data.data?.access_token) {
       const { access_token, refresh_token, user } = data.data;
