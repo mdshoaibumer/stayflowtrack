@@ -127,8 +127,9 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
 
       // Step 3: Create Units
       setProgress("Adding rooms...");
+      const units: { id: string; unit_number: string }[] = [];
       for (const u of DEMO_UNITS) {
-        await fetch(`${API_BASE}/api/v1/properties/${property.id}/units`, {
+        const resp = await fetch(`${API_BASE}/api/v1/properties/${property.id}/units`, {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -137,6 +138,10 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
             unit_type_id: unitTypes[u.type_index]?.id,
           }),
         });
+        if (resp.ok) {
+          const data = await resp.json();
+          units.push(data.data);
+        }
       }
 
       // Step 4: Create Guests
@@ -154,31 +159,308 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
         }
       }
 
-      // Step 5: Create sample reservations
-      setProgress("Creating sample bookings...");
-      const today = new Date();
-      for (let i = 0; i < Math.min(3, guests.length); i++) {
-        const checkIn = new Date(today);
-        checkIn.setDate(today.getDate() + i + 1);
-        const checkOut = new Date(checkIn);
-        checkOut.setDate(checkIn.getDate() + 3);
+      // Step 5: Create sample reservations & operations lifecycle
+      setProgress("Creating bookings & check-ins...");
+      const todayStr = new Date().toISOString().split("T")[0];
+      
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 2);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-        await fetch(`${API_BASE}/api/v1/reservations`, {
+      const checkoutPast = new Date();
+      checkoutPast.setDate(checkoutPast.getDate() - 1);
+      const checkoutPastStr = checkoutPast.toISOString().split("T")[0];
+
+      const checkInTomorrow = new Date();
+      checkInTomorrow.setDate(checkInTomorrow.getDate() + 1);
+      const checkInTomorrowStr = checkInTomorrow.toISOString().split("T")[0];
+
+      const checkOutFuture = new Date();
+      checkOutFuture.setDate(checkOutFuture.getDate() + 3);
+      const checkOutFutureStr = checkOutFuture.toISOString().split("T")[0];
+
+      const checkInFuture = new Date();
+      checkInFuture.setDate(checkInFuture.getDate() + 4);
+      const checkInFutureStr = checkInFuture.toISOString().split("T")[0];
+
+      const checkOutFarFuture = new Date();
+      checkOutFarFuture.setDate(checkOutFarFuture.getDate() + 7);
+      const checkOutFarFutureStr = checkOutFarFuture.toISOString().split("T")[0];
+
+      // 1. Rajesh Sharma in Room 101 (Standard Room) - ACTIVE checked-in
+      const res1Resp = await fetch(`${API_BASE}/api/v1/reservations`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[0]?.id,
+          guest_id: guests[0]?.id,
+          check_in_date: yesterdayStr,
+          check_out_date: checkOutFutureStr,
+          rate_per_night: 2500,
+          booking_source: "walk_in",
+          adults: 2,
+          children: 0,
+        }),
+      });
+      if (res1Resp.ok) {
+        const res1Data = await res1Resp.json();
+        const res1 = res1Data.data;
+        
+        // Confirm reservation
+        await fetch(`${API_BASE}/api/v1/reservations/${res1.id}/confirm`, { method: "POST", headers });
+        
+        // Check-in
+        await fetch(`${API_BASE}/api/v1/operations/check-in`, {
           method: "POST",
           headers,
           body: JSON.stringify({
-            property_id: property.id,
-            unit_id: DEMO_UNITS[i] ? undefined : undefined, // Will need unit IDs
-            guest_id: guests[i]?.id,
-            check_in_date: checkIn.toISOString().split("T")[0],
-            check_out_date: checkOut.toISOString().split("T")[0],
-            rate_per_night: DEMO_UNIT_TYPES[0].base_rate,
-            booking_source: "walk_in",
-            adults: 2,
-            children: 0,
-          }),
+            reservation_id: res1.id,
+            assigned_unit_id: units[0]?.id,
+            deposit_amount: 1000,
+            id_document_type: "passport",
+            id_document_number: "PP1234567"
+          })
+        });
+
+        // Get Folio
+        const folioResp = await fetch(`${API_BASE}/api/v1/billing/folios/reservation/${res1.id}`, { headers });
+        if (folioResp.ok) {
+          const folioData = await folioResp.json();
+          const folio = folioData.data || folioData;
+          if (folio?.id) {
+            // Add minibar charge
+            await fetch(`${API_BASE}/api/v1/billing/charges`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                folio_id: folio.id,
+                category: "minibar",
+                description: "Snacks & Refreshments",
+                quantity: 1,
+                unit_price: 350
+              })
+            });
+            // Record payment
+            await fetch(`${API_BASE}/api/v1/billing/payments`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                folio_id: folio.id,
+                payment_type: "payment",
+                payment_method: "upi",
+                amount: 350,
+                reference_number: "UPI10293847"
+              })
+            });
+          }
+        }
+      }
+
+      // 2. Priya Patel in Room 201 (Deluxe Room) - ARRIVAL tomorrow
+      const res2Resp = await fetch(`${API_BASE}/api/v1/reservations`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[3]?.id,
+          guest_id: guests[1]?.id,
+          check_in_date: checkInTomorrowStr,
+          check_out_date: checkOutFutureStr,
+          rate_per_night: 4500,
+          booking_source: "ota",
+          adults: 2,
+          children: 0,
+        }),
+      });
+      if (res2Resp.ok) {
+        const res2Data = await res2Resp.json();
+        const res2 = res2Data.data;
+        await fetch(`${API_BASE}/api/v1/reservations/${res2.id}/confirm`, { method: "POST", headers });
+      }
+
+      // 3. Amit Kumar in Room 301 (Suite) - CHECKED OUT past
+      const res3Resp = await fetch(`${API_BASE}/api/v1/reservations`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[6]?.id,
+          guest_id: guests[2]?.id,
+          check_in_date: yesterdayStr,
+          check_out_date: todayStr,
+          rate_per_night: 8000,
+          booking_source: "direct",
+          adults: 3,
+          children: 1,
+        }),
+      });
+      if (res3Resp.ok) {
+        const res3Data = await res3Resp.json();
+        const res3 = res3Data.data;
+        await fetch(`${API_BASE}/api/v1/reservations/${res3.id}/confirm`, { method: "POST", headers });
+        await fetch(`${API_BASE}/api/v1/operations/check-in`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            reservation_id: res3.id,
+            assigned_unit_id: units[6]?.id,
+            deposit_amount: 2000,
+            id_document_type: "driving_license",
+            id_document_number: "DL99887766"
+          })
+        });
+
+        // Add laundry charge & checkout
+        const folioResp = await fetch(`${API_BASE}/api/v1/billing/folios/reservation/${res3.id}`, { headers });
+        if (folioResp.ok) {
+          const folioData = await folioResp.json();
+          const folio = folioData.data || folioData;
+          if (folio?.id) {
+            // Add Room Charge
+            await fetch(`${API_BASE}/api/v1/billing/charges`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                folio_id: folio.id,
+                category: "room_charge",
+                description: "Standard Stay Charge",
+                quantity: 2,
+                unit_price: 8000
+              })
+            });
+            // Record checkout
+            await fetch(`${API_BASE}/api/v1/operations/check-out`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                reservation_id: res3.id,
+                payment_method: "card"
+              })
+            });
+          }
+        }
+      }
+
+      // 4. Sneha Reddy in Room 102 (Standard Room) - FUTURE booking
+      const res4Resp = await fetch(`${API_BASE}/api/v1/reservations`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[1]?.id,
+          guest_id: guests[3]?.id,
+          check_in_date: checkInFutureStr,
+          check_out_date: checkOutFarFutureStr,
+          rate_per_night: 2500,
+          booking_source: "ota",
+          adults: 1,
+          children: 0,
+        }),
+      });
+      if (res4Resp.ok) {
+        const res4Data = await res4Resp.json();
+        const res4 = res4Data.data;
+        await fetch(`${API_BASE}/api/v1/reservations/${res4.id}/confirm`, { method: "POST", headers });
+      }
+
+      // 5. Vikram Singh in Room 202 (Deluxe Room) - ARRIVAL today
+      const res5Resp = await fetch(`${API_BASE}/api/v1/reservations`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[4]?.id,
+          guest_id: guests[4]?.id,
+          check_in_date: todayStr,
+          check_out_date: checkOutFutureStr,
+          rate_per_night: 4500,
+          booking_source: "walk_in",
+          adults: 2,
+          children: 0,
+        }),
+      });
+      if (res5Resp.ok) {
+        const res5Data = await res5Resp.json();
+        const res5 = res5Data.data;
+        await fetch(`${API_BASE}/api/v1/reservations/${res5.id}/confirm`, { method: "POST", headers });
+      }
+
+      // Step 6: Create Housekeeping Tasks
+      setProgress("Generating housekeeping schedules...");
+      // Task 1: Room 103 (Standard Room) - Dirty
+      await fetch(`${API_BASE}/api/v1/housekeeping/tasks`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[2]?.id,
+          task_type: "stay_clean",
+          priority: "medium",
+          notes: "Routine deep clean"
+        })
+      });
+
+      // Task 2: Room 202 (Deluxe Room) - Cleaning
+      const hk2Resp = await fetch(`${API_BASE}/api/v1/housekeeping/tasks`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[4]?.id,
+          task_type: "stay_clean",
+          priority: "high",
+          notes: "Pre-arrival deep clean"
+        })
+      });
+      if (hk2Resp.ok) {
+        const hk2Data = await hk2Resp.json();
+        const hk2 = hk2Data.data;
+        await fetch(`${API_BASE}/api/v1/housekeeping/tasks/${hk2.id}/status`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ status: "cleaning" })
         });
       }
+
+      // Task 3: Room 203 (Deluxe Room) - Ready
+      const hk3Resp = await fetch(`${API_BASE}/api/v1/housekeeping/tasks`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          unit_id: units[5]?.id,
+          task_type: "stay_clean",
+          priority: "low",
+          notes: "Routine light cleaning"
+        })
+      });
+      if (hk3Resp.ok) {
+        const hk3Data = await hk3Resp.json();
+        const hk3 = hk3Data.data;
+        await fetch(`${API_BASE}/api/v1/housekeeping/tasks/${hk3.id}/status`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ status: "ready" })
+        });
+      }
+
+      // Step 7: Create Laundry orders
+      setProgress("Generating laundry orders...");
+      await fetch(`${API_BASE}/api/v1/laundry/orders`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          property_id: property.id,
+          guest_id: guests[0]?.id,
+          order_type: "guest",
+          items: [
+            { item_type: "shirt", service_type: "wash_iron", quantity: 3, unit_price: 70 },
+            { item_type: "suit", service_type: "dry_clean", quantity: 1, unit_price: 250 }
+          ],
+          notes: "Please deliver express"
+        })
+      });
 
       setProgress("");
       setDone(true);
@@ -222,11 +504,12 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
               <div className="bg-gray-50 rounded-md p-3 mb-6 text-left">
                 <p className="text-xs font-medium text-gray-700 mb-2">Demo data includes:</p>
                 <ul className="text-xs text-gray-600 space-y-1">
-                  <li>• 1 Hotel property (Grand StayFlow Hotel)</li>
-                  <li>• 3 Room types (Standard, Deluxe, Suite)</li>
-                  <li>• 8 Rooms across 3 floors</li>
+                  <li>• 1 Property with 8 rooms & 3 room types</li>
                   <li>• 5 Sample guests with details</li>
-                  <li>• 3 Upcoming reservations</li>
+                  <li>• 5 Bookings (Active, Tomorrow Arrival, Past checkout, Future, Today Arrival)</li>
+                  <li>• Folio billing charges, payments, and generated invoices</li>
+                  <li>• Housekeeping tasks (Dirty, Cleaning, and Ready rooms)</li>
+                  <li>• Active guest laundry orders</li>
                 </ul>
               </div>
 
