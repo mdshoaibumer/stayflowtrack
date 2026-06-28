@@ -25,12 +25,14 @@ func (r *Repository) CreateReservation(ctx context.Context, res *domain.Reservat
 		`INSERT INTO reservations (
 			tenant_id, property_id, unit_id, guest_id,
 			booking_source, status, check_in_date, check_out_date,
-			num_guests, rate_per_night, total_amount, notes, external_booking_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			num_guests, rate_per_night, total_amount, notes, external_booking_id,
+			advance_amount, advance_method, advance_reference
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING id, created_at, updated_at`,
 		res.TenantID, res.PropertyID, res.UnitID, res.GuestID,
 		res.BookingSource, res.Status, res.CheckInDate, res.CheckOutDate,
 		res.NumGuests, res.RatePerNight, res.TotalAmount, res.Notes, res.ExternalBookingID,
+		res.AdvanceAmount, res.AdvanceMethod, res.AdvanceReference,
 	).Scan(&res.ID, &res.CreatedAt, &res.UpdatedAt)
 
 	if err != nil {
@@ -49,7 +51,8 @@ func (r *Repository) GetReservationByID(ctx context.Context, id, tenantID uuid.U
 		        COALESCE(r.cancellation_reason, ''), r.cancelled_at, COALESCE(r.external_booking_id, ''),
 		        r.created_at, r.updated_at,
 		        g.first_name, g.last_name, COALESCE(g.phone, ''),
-		        u.unit_number, ut.name, p.name
+		        u.unit_number, ut.name, p.name,
+		        COALESCE(r.advance_amount, 0), COALESCE(r.advance_method, ''), COALESCE(r.advance_reference, '')
 		 FROM reservations r
 		 JOIN guests g ON r.guest_id = g.id
 		 JOIN units u ON r.unit_id = u.id
@@ -63,7 +66,8 @@ func (r *Repository) GetReservationByID(ctx context.Context, id, tenantID uuid.U
 		&res.CancellationReason, &res.CancelledAt, &res.ExternalBookingID,
 		&res.CreatedAt, &res.UpdatedAt,
 		&res.GuestFirstName, &res.GuestLastName, &res.GuestPhone,
-		&res.UnitNumber, &res.UnitTypeName, &res.PropertyName)
+		&res.UnitNumber, &res.UnitTypeName, &res.PropertyName,
+		&res.AdvanceAmount, &res.AdvanceMethod, &res.AdvanceReference)
 
 	if err == pgx.ErrNoRows {
 		return nil, apperrors.NotFound("reservation", id.String())
@@ -103,7 +107,8 @@ func (r *Repository) ListReservations(ctx context.Context, params ListParams) ([
 		        COALESCE(r.cancellation_reason, ''), r.cancelled_at, COALESCE(r.external_booking_id, ''),
 		        r.created_at, r.updated_at,
 		        g.first_name, g.last_name, COALESCE(g.phone, ''),
-		        u.unit_number, ut.name
+		        u.unit_number, ut.name,
+		        COALESCE(r.advance_amount, 0), COALESCE(r.advance_method, ''), COALESCE(r.advance_reference, '')
 		 FROM reservations r
 		 JOIN guests g ON r.guest_id = g.id
 		 JOIN units u ON r.unit_id = u.id
@@ -130,7 +135,8 @@ func (r *Repository) ListReservations(ctx context.Context, params ListParams) ([
 			&res.CancellationReason, &res.CancelledAt, &res.ExternalBookingID,
 			&res.CreatedAt, &res.UpdatedAt,
 			&res.GuestFirstName, &res.GuestLastName, &res.GuestPhone,
-			&res.UnitNumber, &res.UnitTypeName); err != nil {
+			&res.UnitNumber, &res.UnitTypeName,
+			&res.AdvanceAmount, &res.AdvanceMethod, &res.AdvanceReference); err != nil {
 			return nil, 0, fmt.Errorf("scan reservation: %w", err)
 		}
 		reservations = append(reservations, res)
@@ -298,12 +304,14 @@ func (r *Repository) CreateReservationAtomic(ctx context.Context, res *domain.Re
 		`INSERT INTO reservations (
 			tenant_id, property_id, unit_id, guest_id,
 			booking_source, status, check_in_date, check_out_date,
-			num_guests, rate_per_night, total_amount, notes, external_booking_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			num_guests, rate_per_night, total_amount, notes, external_booking_id,
+			advance_amount, advance_method, advance_reference
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING id, created_at, updated_at`,
 		res.TenantID, res.PropertyID, res.UnitID, res.GuestID,
 		res.BookingSource, res.Status, res.CheckInDate, res.CheckOutDate,
 		res.NumGuests, res.RatePerNight, res.TotalAmount, res.Notes, res.ExternalBookingID,
+		res.AdvanceAmount, res.AdvanceMethod, res.AdvanceReference,
 	).Scan(&res.ID, &res.CreatedAt, &res.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create reservation in tx: %w", err)
