@@ -9,7 +9,10 @@ export function middleware(_request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const response = NextResponse.next();
 
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev =
+    process.env.NODE_ENV === "development" ||
+    process.env.APP_ENV === "development" ||
+    process.env.NEXT_PUBLIC_API_URL?.includes("localhost");
 
   // Content Security Policy — nonce-based for production, relaxed for dev
   const csp = isDev
