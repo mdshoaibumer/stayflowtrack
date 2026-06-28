@@ -13,6 +13,8 @@ DB_NAME="${DB_NAME:-stayflow_track}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 S3_BUCKET="${S3_BUCKET:-}"
 S3_PREFIX="${S3_PREFIX:-stayflow-backups/postgres}"
+GPG_RECIPIENT="${BACKUP_GPG_RECIPIENT:-}"
+HEALTHCHECK_URL="${BACKUP_HEALTHCHECK_URL:-}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="stayflow_${TIMESTAMP}.dump"
 
@@ -30,6 +32,16 @@ docker exec "${DB_CONTAINER}" pg_dump \
     --no-acl \
     > "${BACKUP_DIR}/${BACKUP_FILE}"
 
+# Encrypt backup if GPG recipient is configured (protects PII at rest)
+if [ -n "${GPG_RECIPIENT}" ]; then
+    echo "[$(date)] Encrypting backup with GPG (recipient: ${GPG_RECIPIENT})..."
+    gpg --batch --yes --trust-model always --recipient "${GPG_RECIPIENT}" \
+        --encrypt "${BACKUP_DIR}/${BACKUP_FILE}"
+    rm -f "${BACKUP_DIR}/${BACKUP_FILE}"
+    BACKUP_FILE="${BACKUP_FILE}.gpg"
+    echo "[$(date)] Backup encrypted: ${BACKUP_FILE}"
+fi
+
 FILESIZE=$(stat -c%s "${BACKUP_DIR}/${BACKUP_FILE}" 2>/dev/null || stat -f%z "${BACKUP_DIR}/${BACKUP_FILE}" 2>/dev/null || wc -c < "${BACKUP_DIR}/${BACKUP_FILE}")
 echo "[$(date)] Backup created: ${BACKUP_FILE} (${FILESIZE} bytes)"
 
@@ -43,6 +55,7 @@ fi
 # Remove old backups (local)
 echo "[$(date)] Removing backups older than ${RETENTION_DAYS} days..."
 find "${BACKUP_DIR}" -name "stayflow_*.dump" -mtime +${RETENTION_DAYS} -delete
+find "${BACKUP_DIR}" -name "stayflow_*.dump.gpg" -mtime +${RETENTION_DAYS} -delete
 
 # Remove old S3 backups if configured
 if [ -n "${S3_BUCKET}" ]; then
@@ -57,3 +70,8 @@ if [ -n "${S3_BUCKET}" ]; then
 fi
 
 echo "[$(date)] Backup complete. Retained: ${RETENTION_DAYS} days"
+
+# Ping healthcheck monitor on success
+if [ -n "${HEALTHCHECK_URL}" ]; then
+    curl -fsS -m 10 --retry 5 "${HEALTHCHECK_URL}" > /dev/null 2>&1 || true
+fi
