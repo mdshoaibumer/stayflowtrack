@@ -255,6 +255,19 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+        run: npm run build
+
+      - name: Start frontend
+        working-directory: frontend
+        run: |
+          npx next start -p 3000 &
+          sleep 5
+          curl -f http://localhost:3000 || exit 1
+
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
