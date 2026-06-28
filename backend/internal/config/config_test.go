@@ -114,6 +114,8 @@ func TestLoad_ProductionValidation_Valid(t *testing.T) {
 		"APP_ENV":            "production",
 		"DB_PASSWORD":        "a-production-db-credential-minimum-32chars-long-ok",
 		"DB_SSL_MODE":        "require",
+		"DB_APP_USER":        "stayflow_app",
+		"DB_APP_PASSWORD":    "app-role-password-for-rls-testing",
 		"JWT_ACCESS_SECRET":  "production-access-secret-that-is-long-enough-and-secure",
 		"JWT_REFRESH_SECRET": "production-refresh-secret-that-is-also-long-and-different",
 	})

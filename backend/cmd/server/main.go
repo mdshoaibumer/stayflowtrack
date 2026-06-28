@@ -52,6 +52,7 @@ import (
 	saasrepo "github.com/stayflow/stayflow-track/internal/modules/saas/repository"
 	saasservice "github.com/stayflow/stayflow-track/internal/modules/saas/service"
 	"github.com/stayflow/stayflow-track/internal/platform/database"
+	"github.com/stayflow/stayflow-track/internal/platform/email"
 	"github.com/stayflow/stayflow-track/internal/platform/logger"
 	"github.com/stayflow/stayflow-track/internal/platform/storage"
 	"github.com/stayflow/stayflow-track/internal/shared/audit"
@@ -75,12 +76,21 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Owner pool — used for migrations, auth (cross-tenant), and admin queries
 	db, err := database.Connect(ctx, cfg.Database)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to database")
 	}
 	defer db.Close()
-	tenantDB := database.NewTenantPool(db)
+
+	// App pool — uses RLS-restricted role (stayflow_app) in production.
+	// Falls back to owner pool in development when DB_APP_USER is not set.
+	appPool, err := database.ConnectAppRole(ctx, cfg.Database)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to connect app role to database")
+	}
+	defer appPool.Close()
+	tenantDB := database.NewTenantPool(appPool)
 
 	store, err := storage.New(cfg.Storage)
 	if err != nil {
@@ -148,8 +158,19 @@ func main() {
 	saasSvc := saasservice.New(saasRepo, razorpayClient)
 	opsSvc := opsservice.New(tenantDB)
 
+	// Email sender for transactional emails (password reset, etc.)
+	emailSender := email.New(cfg.Email, cfg.App.Name)
+	if emailSender.IsEnabled() {
+		log.Info().Msg("email sending enabled via SMTP")
+	} else {
+		log.Warn().Msg("email sending disabled (set SMTP_ENABLED=true to enable)")
+	}
+
+	// App domain for reset links
+	appDomain := getEnvDirect("DOMAIN_APP", "app.localhost")
+
 	// Handlers
-	authHandler := handler.New(authSvc, log, auditLog)
+	authHandler := handler.New(authSvc, log, auditLog, emailSender, appDomain)
 	propHandler := prophandler.New(propSvc, log)
 	guestHandler := guesthandler.New(guestSvc, log)
 	resHandler := reshandler.New(resSvc, log)
@@ -174,13 +195,14 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
+	r.Use(middleware.ResponseRequestID)
 	r.Use(middleware.RequestLogger(log))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORS.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Tenant-ID", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		ExposedHeaders:   []string{"Link", "X-Request-Id"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
@@ -201,6 +223,16 @@ func main() {
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
+		// CSP violation reporting endpoint (public, no auth)
+		r.Post("/csp-report", func(w http.ResponseWriter, r *http.Request) {
+			body := make([]byte, 4096)
+			n, _ := r.Body.Read(body)
+			if n > 0 {
+				log.Warn().RawJSON("csp_report", body[:n]).Msg("CSP violation reported")
+			}
+			w.WriteHeader(http.StatusNoContent)
+		})
+
 		// Public routes
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(authLimiter.Limit)
@@ -421,4 +453,11 @@ func main() {
 	}
 
 	log.Info().Msg("server stopped")
+}
+
+func getEnvDirect(key, fallback string) string {
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
+	return fallback
 }

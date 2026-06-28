@@ -9,6 +9,7 @@ import (
 
 	"github.com/stayflow/stayflow-track/internal/modules/auth/middleware"
 	"github.com/stayflow/stayflow-track/internal/modules/auth/service"
+	"github.com/stayflow/stayflow-track/internal/platform/email"
 	"github.com/stayflow/stayflow-track/internal/shared/audit"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
 	"github.com/stayflow/stayflow-track/internal/shared/response"
@@ -16,13 +17,15 @@ import (
 )
 
 type Handler struct {
-	service  *service.Service
-	log      zerolog.Logger
-	auditLog *audit.Logger
+	service   *service.Service
+	log       zerolog.Logger
+	auditLog  *audit.Logger
+	email     *email.Sender
+	appDomain string
 }
 
-func New(svc *service.Service, log zerolog.Logger, auditLog *audit.Logger) *Handler {
-	return &Handler{service: svc, log: log, auditLog: auditLog}
+func New(svc *service.Service, log zerolog.Logger, auditLog *audit.Logger, emailSender *email.Sender, appDomain string) *Handler {
+	return &Handler{service: svc, log: log, auditLog: auditLog, email: emailSender, appDomain: appDomain}
 }
 
 func (h *Handler) RegisterTenant(w http.ResponseWriter, r *http.Request) {
@@ -172,9 +175,20 @@ func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.service.RequestPasswordReset(r.Context(), input)
+	token, err := h.service.RequestPasswordReset(r.Context(), input)
 	if err != nil {
 		h.log.Error().Err(err).Msg("password reset request failed")
+	}
+
+	// Send email asynchronously (don't block response or leak timing info)
+	if token != "" && h.email.IsEnabled() {
+		go func() {
+			if sendErr := h.email.SendPasswordReset(r.Context(), input.Email, token, h.appDomain); sendErr != nil {
+				h.log.Error().Err(sendErr).Str("email", input.Email).Msg("failed to send password reset email")
+			}
+		}()
+	} else if token != "" {
+		h.log.Warn().Str("email", input.Email).Msg("password reset token generated but email sending is disabled (SMTP_ENABLED=false)")
 	}
 
 	// Always return success to prevent email enumeration

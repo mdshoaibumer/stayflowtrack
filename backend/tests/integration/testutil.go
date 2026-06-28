@@ -42,6 +42,7 @@ import (
 	resrepo "github.com/stayflow/stayflow-track/internal/modules/reservation/repository"
 	resservice "github.com/stayflow/stayflow-track/internal/modules/reservation/service"
 	"github.com/stayflow/stayflow-track/internal/platform/database"
+	"github.com/stayflow/stayflow-track/internal/platform/email"
 	"github.com/stayflow/stayflow-track/internal/platform/storage"
 	"github.com/stayflow/stayflow-track/internal/shared/audit"
 )
@@ -173,7 +174,8 @@ func buildServer(pool *pgxpool.Pool, jwtCfg config.JWTConfig) *httptest.Server {
 	auditLog := audit.New(pool)
 
 	// Handlers
-	authH := authhandler.New(authSvc, log, auditLog)
+	emailSender := email.New(config.EmailConfig{Enabled: false}, "stayflow-test")
+	authH := authhandler.New(authSvc, log, auditLog, emailSender, "app.test.local")
 	propH := prophandler.New(propSvc, log)
 	guestH := guesthandler.New(guestSvc, log)
 	resH := reshandler.New(resSvc, log)

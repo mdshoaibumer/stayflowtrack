@@ -61,6 +61,7 @@ import (
 	saasrepo "github.com/stayflow/stayflow-track/internal/modules/saas/repository"
 	saasservice "github.com/stayflow/stayflow-track/internal/modules/saas/service"
 	"github.com/stayflow/stayflow-track/internal/platform/database"
+	"github.com/stayflow/stayflow-track/internal/platform/email"
 	"github.com/stayflow/stayflow-track/internal/platform/storage"
 	"github.com/stayflow/stayflow-track/internal/shared/audit"
 	"github.com/stayflow/stayflow-track/internal/shared/middleware"
@@ -166,7 +167,8 @@ func main() {
 	auditLog := audit.New(pool)
 
 	// Handlers
-	authH := authhandler.New(authSvc, log, auditLog)
+	emailSender := email.New(config.EmailConfig{Enabled: false}, "stayflow-e2e")
+	authH := authhandler.New(authSvc, log, auditLog, emailSender, "app.e2e.local")
 	propH := prophandler.New(propSvc, log)
 	guestH := guesthandler.New(guestSvc, log)
 	resH := reshandler.New(resSvc, log)

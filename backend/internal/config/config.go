@@ -17,6 +17,7 @@ type Config struct {
 	Log           LogConfig
 	Razorpay      RazorpayConfig
 	Notifications NotificationConfig
+	Email         EmailConfig
 }
 
 type NotificationConfig struct {
@@ -24,6 +25,16 @@ type NotificationConfig struct {
 	GupshupAPIKey string
 	GupshupApp    string
 	WebhookSecret string
+}
+
+type EmailConfig struct {
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUser     string
+	SMTPPassword string
+	FromAddress  string
+	FromName     string
+	Enabled      bool
 }
 
 type RazorpayConfig struct {
@@ -48,6 +59,10 @@ type DatabaseConfig struct {
 	MaxOpenConns int
 	MaxIdleConns int
 	MaxLifetime  time.Duration
+	// AppUser is the restricted RLS-subject role for tenant queries in production.
+	// If empty, the primary User/Password is used (development mode).
+	AppUser     string
+	AppPassword string
 }
 
 func (c DatabaseConfig) DSN() string {
@@ -96,6 +111,7 @@ func Load() (*Config, error) {
 
 	accessExp, _ := time.ParseDuration(getEnv("JWT_ACCESS_EXPIRATION", "15m"))
 	refreshExp, _ := time.ParseDuration(getEnv("JWT_REFRESH_EXPIRATION", "168h"))
+	smtpPort, _ := strconv.Atoi(getEnv("SMTP_PORT", "587"))
 
 	cfg := &Config{
 		App: AppConfig{
@@ -113,6 +129,8 @@ func Load() (*Config, error) {
 			MaxOpenConns: maxOpenConns,
 			MaxIdleConns: maxIdleConns,
 			MaxLifetime:  maxLifetime,
+			AppUser:      getEnv("DB_APP_USER", ""),
+			AppPassword:  getEnv("DB_APP_PASSWORD", ""),
 		},
 		JWT: JWTConfig{
 			AccessSecret:      getEnv("JWT_ACCESS_SECRET", ""),
@@ -148,6 +166,15 @@ func Load() (*Config, error) {
 			GupshupApp:    getEnv("GUPSHUP_APP_NAME", ""),
 			WebhookSecret: getEnv("NOTIFICATION_WEBHOOK_SECRET", ""),
 		},
+		Email: EmailConfig{
+			SMTPHost:     getEnv("SMTP_HOST", ""),
+			SMTPPort:     smtpPort,
+			SMTPUser:     getEnv("SMTP_USER", ""),
+			SMTPPassword: getEnv("SMTP_PASSWORD", ""),
+			FromAddress:  getEnv("SMTP_FROM_ADDRESS", "noreply@stayflow.app"),
+			FromName:     getEnv("SMTP_FROM_NAME", "StayFlow Track"),
+			Enabled:      getEnv("SMTP_ENABLED", "false") == "true",
+		},
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -174,6 +201,12 @@ func (c *Config) validate() error {
 		}
 		if len(c.Database.Password) < 32 {
 			return fmt.Errorf("DB_PASSWORD must be at least 32 characters in production")
+		}
+		if c.Database.AppUser == "" {
+			return fmt.Errorf("DB_APP_USER is required in production (RLS-restricted role)")
+		}
+		if c.Database.AppPassword == "" {
+			return fmt.Errorf("DB_APP_PASSWORD is required in production (RLS-restricted role)")
 		}
 		if len(c.JWT.AccessSecret) < 32 {
 			return fmt.Errorf("JWT_ACCESS_SECRET must be at least 32 characters in production")

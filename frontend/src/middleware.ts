@@ -47,9 +47,15 @@ export function middleware(_request: NextRequest) {
         "base-uri 'self'",
         "form-action 'self'",
         "upgrade-insecure-requests",
+        `report-uri ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/v1/csp-report`,
+        `report-to csp-endpoint`,
       ].join("; ");
 
   response.headers.set("Content-Security-Policy", csp);
+  response.headers.set(
+    "Reporting-Endpoints",
+    `csp-endpoint="${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/v1/csp-report"`
+  );
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "0");
