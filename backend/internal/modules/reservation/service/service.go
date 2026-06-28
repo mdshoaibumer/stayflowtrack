@@ -128,7 +128,7 @@ func (s *Service) CreateReservation(ctx context.Context, tenantID uuid.UUID, inp
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					// Log panic but don't crash the process
+					log.Error().Interface("panic", r).Msg("panic in booking confirmation goroutine")
 				}
 			}()
 			// Look up full reservation data with joined guest/property fields

@@ -200,7 +200,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
       };
 
       // Helper function to handle POST with logging
-      const postJSON = async (url: string, dataObj: any) => {
+      const postJSON = async (url: string, dataObj: Record<string, unknown>) => {
         try {
           const resp = await fetch(url, {
             method: "POST",
@@ -213,8 +213,8 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
             return null;
           }
           return await resp.json();
-        } catch (e) {
-          console.error(`POST ${url} error:`, e);
+        } catch {
+          console.error(`POST ${url} error`);
           return null;
         }
       };
@@ -225,7 +225,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           const resp = await fetch(url, { headers });
           if (!resp.ok) return null;
           return await resp.json();
-        } catch (e) {
+        } catch {
           return null;
         }
       };

@@ -3,14 +3,12 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 )
 
 func TestCSRFProtection_SafeMethodsPassThrough(t *testing.T) {
-	os.Setenv("APP_ENV", "production")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "production")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -30,8 +28,7 @@ func TestCSRFProtection_SafeMethodsPassThrough(t *testing.T) {
 }
 
 func TestCSRFProtection_SetsTokenCookieOnGET(t *testing.T) {
-	os.Setenv("APP_ENV", "production")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "production")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -66,8 +63,7 @@ func TestCSRFProtection_SetsTokenCookieOnGET(t *testing.T) {
 }
 
 func TestCSRFProtection_BlocksPOSTWithoutToken(t *testing.T) {
-	os.Setenv("APP_ENV", "production")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "production")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -83,8 +79,7 @@ func TestCSRFProtection_BlocksPOSTWithoutToken(t *testing.T) {
 }
 
 func TestCSRFProtection_BlocksMismatchedTokens(t *testing.T) {
-	os.Setenv("APP_ENV", "production")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "production")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -102,8 +97,7 @@ func TestCSRFProtection_BlocksMismatchedTokens(t *testing.T) {
 }
 
 func TestCSRFProtection_AllowsMatchingTokens(t *testing.T) {
-	os.Setenv("APP_ENV", "production")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "production")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -122,8 +116,7 @@ func TestCSRFProtection_AllowsMatchingTokens(t *testing.T) {
 }
 
 func TestCSRFProtection_SkipsWithAuthorizationHeader(t *testing.T) {
-	os.Setenv("APP_ENV", "production")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "production")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -140,8 +133,7 @@ func TestCSRFProtection_SkipsWithAuthorizationHeader(t *testing.T) {
 }
 
 func TestCSRFProtection_SkipsWebhookPaths(t *testing.T) {
-	os.Setenv("APP_ENV", "production")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "production")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -165,8 +157,7 @@ func TestCSRFProtection_SkipsWebhookPaths(t *testing.T) {
 }
 
 func TestCSRFProtection_SkippedInDevMode(t *testing.T) {
-	os.Setenv("APP_ENV", "development")
-	defer os.Unsetenv("APP_ENV")
+	t.Setenv("APP_ENV", "development")
 
 	handler := CSRFProtection(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

@@ -408,7 +408,7 @@ func (r *Repository) PerformWalkIn(ctx context.Context, tenantID, userID uuid.UU
 	// 2. Create guest (or find existing by phone within the same tenant)
 	var guestID uuid.UUID
 	if input.GuestPhone != "" {
-		err = tx.QueryRow(ctx,
+		_ = tx.QueryRow(ctx,
 			`SELECT id FROM guests WHERE tenant_id = $1 AND phone = $2 LIMIT 1`,
 			tenantID, input.GuestPhone,
 		).Scan(&guestID)
