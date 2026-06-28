@@ -10,6 +10,7 @@ interface CalendarUnit {
   unit_type_name: string;
   floor: number;
   status: string;
+  entries?: CalendarEntry[];
 }
 
 interface CalendarEntry {
@@ -120,7 +121,7 @@ export default function ReservationCalendar({
 
     try {
       const [calData, occData] = await Promise.all([
-        api.get<CalendarViewData>(`/api/v1/calendar/${propertyId}`, { start, end }),
+        api.get<CalendarViewData>(`/api/v1/calendar/${propertyId}`, { start_date: start, end_date: end }),
         api.get<OccupancyStats>(`/api/v1/calendar/${propertyId}/occupancy`, { date: start }).catch(() => null),
       ]);
 
@@ -151,9 +152,11 @@ export default function ReservationCalendar({
   // Find entries for a unit on a date (exclude cancelled/checked_out)
   const getEntryForCell = (unitId: string, date: string): CalendarEntry | null => {
     if (!calendarData) return null;
+    const unit = calendarData.units.find((u) => u.id === unitId);
+    if (!unit || !unit.entries) return null;
     return (
-      calendarData.entries.find(
-        (e) => e.unit_id === unitId && date >= e.check_in_date && date < e.check_out_date && e.status !== "cancelled" && e.status !== "checked_out"
+      unit.entries.find(
+        (e) => date >= e.check_in_date && date < e.check_out_date && e.status !== "cancelled" && e.status !== "checked_out"
       ) || null
     );
   };
@@ -161,8 +164,10 @@ export default function ReservationCalendar({
   // Check if date is start of entry (exclude cancelled)
   const isEntryStart = (unitId: string, date: string): boolean => {
     if (!calendarData) return false;
-    return calendarData.entries.some(
-      (e) => e.unit_id === unitId && e.check_in_date === date && e.status !== "cancelled" && e.status !== "checked_out"
+    const unit = calendarData.units.find((u) => u.id === unitId);
+    if (!unit || !unit.entries) return false;
+    return unit.entries.some(
+      (e) => e.check_in_date === date && e.status !== "cancelled" && e.status !== "checked_out"
     );
   };
 

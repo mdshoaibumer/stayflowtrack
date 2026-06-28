@@ -195,6 +195,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timeoutId);
   }, [state.isAuthenticated]);
 
+  // Automatically fetch and set default property if none is assigned (e.g. for super_admin owners)
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.accessToken || state.user?.property_id) return;
+
+    let active = true;
+    const fetchDefaultProperty = async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/api/v1/properties`, {
+          headers: { Authorization: `Bearer ${state.accessToken}` },
+        });
+        if (resp.ok && active) {
+          const data = await resp.json();
+          const properties = data.data || [];
+          if (properties.length > 0) {
+            const updatedUser = { ...state.user!, property_id: properties[0].id };
+            setStorageItem("user", JSON.stringify(updatedUser));
+            setState((s) => ({ ...s, user: updatedUser }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch default property:", err);
+      }
+    };
+
+    fetchDefaultProperty();
+    return () => {
+      active = false;
+    };
+  }, [state.isAuthenticated, state.accessToken, state.user?.property_id]);
+
   const login = useCallback(async (email: string, password: string) => {
     const resp = await fetch(`${API_BASE}/api/v1/auth/login`, {
       method: "POST",
