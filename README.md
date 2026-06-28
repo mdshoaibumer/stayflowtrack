@@ -58,20 +58,24 @@
 ### Security
 - JWT authentication with token rotation
 - Role-based access control (RBAC)
-- Rate limiting (sliding window)
+- CSRF protection (Double Submit Cookie pattern)
+- Rate limiting (sliding window, per-IP)
 - HMAC webhook verification
-- Row-Level Security readiness
+- Row-Level Security **enforced** via `stayflow_app` restricted role
 - Audit logging
+- Password reset via email (SMTP integration)
+- Production config validation (rejects weak secrets, enforces SSL)
 
 ---
 
 ## Architecture
 
 ### Tech Stack
-- **Backend**: Go 1.25+, Chi Router, PostgreSQL 16, sqlc, JWT
-- **Frontend**: Next.js 15, TypeScript, Tailwind CSS, shadcn/ui
-- **Infrastructure**: Docker Compose, Caddy (SSL), MinIO (S3-compatible)
+- **Backend**: Go 1.25+, Chi v5 Router, PostgreSQL 17, sqlc, JWT
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui
+- **Infrastructure**: Docker Compose, Caddy (auto-SSL + HSTS), MinIO (S3-compatible)
 - **Payments**: Razorpay
+- **Notifications**: Gupshup (WhatsApp/SMS) or pluggable providers
 
 ### Architecture Principles
 - **Modular Monolith** with clear module boundaries
@@ -112,9 +116,10 @@ backend/
 ├── internal/
 │   ├── config/                 # Configuration (env-based, production validation)
 │   ├── platform/               # Infrastructure
-│   │   ├── database/           # Connection pool, transactions, tenant context, timeouts
-│   │   ├── logger/             # Structured logging (zerolog)
-│   │   └── storage/            # S3-compatible file storage
+│   │   ├── database/           # Dual connection pool (owner + RLS app role), tenant context
+│   │   ├── email/              # SMTP transactional email (password reset)
+│   │   ├── logger/             # Structured logging (zerolog, JSON)
+│   │   └── storage/            # S3-compatible file storage (MinIO)
 │   ├── modules/
 │   │   ├── auth/               # Authentication, authorization, RBAC
 │   │   ├── property/           # Properties, unit types, units
@@ -132,12 +137,12 @@ backend/
 │   └── shared/                 # Cross-cutting concerns
 │       ├── audit/              # Audit logging
 │       ├── errors/             # Structured error types
-│       ├── middleware/         # Rate limiting, body size, metrics, logging
+│       ├── middleware/         # Rate limiting, CSRF, body size, metrics, request ID, logging
 │       ├── money/              # Decimal arithmetic helpers
 │       ├── pagination/         # Cursor & offset pagination
 │       ├── response/           # JSON response formatters
 │       └── validation/         # Input validation (go-playground/validator)
-├── migrations/                 # 12 sequential migrations
+├── migrations/                 # 16 sequential migrations
 ├── sqlc/                       # sqlc queries & config
 ├── Dockerfile                  # Multi-stage build
 └── Makefile                    # Dev commands
@@ -149,7 +154,9 @@ frontend/
 └── Dockerfile
 
 scripts/
-├── backup.sh                   # Automated PostgreSQL backup (cron + S3)
+├── backup.sh                   # Automated PostgreSQL backup (GPG encrypted, cron + S3)
+├── backup-minio.sh             # MinIO document backup (GPG encrypted, daily)
+├── verify-backup.sh            # Weekly backup integrity verification
 └── restore.sh                  # Point-in-time restore
 ```
 
@@ -215,11 +222,12 @@ docker compose -f docker-compose.prod.yml up -d  # Start (production)
 
 ```
 VPS (4 CPU / 8GB RAM minimum)
-├── Caddy (SSL termination, auto Let's Encrypt)
-├── StayFlow Backend (Go binary, stateless)
-├── PostgreSQL 16 (data volume)
-├── MinIO (document storage)
-└── Cron (pg_dump every 6h → S3)
+├── Caddy (SSL termination, auto Let's Encrypt, HSTS preload)
+├── StayFlow Backend (Go binary, stateless, RLS-enforced)
+├── StayFlow Frontend (Next.js 15 standalone)
+├── PostgreSQL 17 (data volume, RLS policies active)
+├── MinIO (document storage, localhost-only)
+└── Cron (pg_dump every 6h → GPG encrypted → S3)
 ```
 
 ```bash
@@ -237,12 +245,17 @@ See [`.env.example`](.env.example) for all configuration options. Critical produ
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DB_PASSWORD` | PostgreSQL password | Yes |
+| `DB_PASSWORD` | PostgreSQL owner password (≥32 chars) | Yes |
+| `DB_APP_USER` | RLS-restricted role name (`stayflow_app`) | Production |
+| `DB_APP_PASSWORD` | RLS role password | Production |
+| `DB_SSL_MODE` | Must be `require` in production | Production |
 | `JWT_ACCESS_SECRET` | Access token signing key (≥32 chars) | Yes |
 | `JWT_REFRESH_SECRET` | Refresh token signing key (≥32 chars) | Yes |
 | `PLATFORM_TENANT_ID` | UUID of platform operator tenant | Yes |
-| `DOMAIN_API` | API domain (for Caddy) | Production |
-| `DOMAIN_APP` | Frontend domain (for Caddy) | Production |
+| `DOMAIN_API` | API domain (for Caddy auto-SSL) | Production |
+| `DOMAIN_APP` | Frontend domain (for Caddy auto-SSL) | Production |
+| `BACKUP_GPG_RECIPIENT` | GPG key ID for encrypted backups | Optional |
+| `BACKUP_HEALTHCHECK_URL` | Healthchecks.io ping URL | Optional |
 
 ---
 
@@ -308,14 +321,18 @@ See [`.env.example`](.env.example) for all configuration options. Critical produ
 
 - **Authentication**: JWT with 15-min access tokens + 7-day refresh tokens (hashed, rotated)
 - **Authorization**: RBAC with 4 roles (super_admin, property_admin, receptionist, housekeeping)
-- **Rate Limiting**: 5 req/min on auth endpoints, 100 req/min global (sliding window per IP)
+- **CSRF Protection**: Double Submit Cookie pattern (constant-time comparison)
+- **Rate Limiting**: 100 req/min on auth endpoints, 5000 req/min global (sliding window per IP)
 - **Body Size Limits**: 1MB global, 10MB for file uploads
-- **Tenant Isolation**: Application-layer filtering + PostgreSQL RLS policies (defense-in-depth)
-- **Secrets**: No hardcoded values; environment-variable based with production validation
+- **Request Timeout**: 30-second context deadline on all requests
+- **Tenant Isolation**: Dual DB pool (owner + `stayflow_app` RLS role) + FORCE ROW LEVEL SECURITY on all tenant tables
+- **Secrets**: No hardcoded values; environment-variable based with production validation (≥32 chars, rejects "dev"/"password" substrings)
 - **Audit Logging**: All critical operations logged with actor, entity, old/new values
-- **Webhooks**: HMAC-SHA256 signature verification
-- **SSL**: Automatic via Caddy with HSTS headers
-- **Password Storage**: bcrypt (default cost)
+- **Webhooks**: HMAC-SHA256 signature verification (Razorpay, Gupshup)
+- **SSL**: Automatic via Caddy with HSTS preload + security headers
+- **Password Storage**: bcrypt (default cost) + complexity validation (upper, lower, digit, special)
+- **Backup Encryption**: Optional GPG encryption at rest for database dumps
+- **Password Reset**: Secure token-based flow via SMTP email
 
 ---
 
@@ -323,7 +340,7 @@ See [`.env.example`](.env.example) for all configuration options. Critical produ
 
 ### Migrations
 
-12 sequential migrations covering:
+16 sequential migrations covering:
 1. Core schema (tenants, users, roles)
 2. Property management
 3. Guest management
@@ -336,14 +353,48 @@ See [`.env.example`](.env.example) for all configuration options. Critical produ
 10. Performance indexes (pg_trgm, partial, composite)
 11. Row-Level Security policies
 12. Hospitality operations (maintenance, deposits, corporate)
+13. Laundry rate cards
+14. Advance payments & night audit
+15. **Enforce RLS** (creates `stayflow_app` restricted role, FORCE on all tables)
+16. Tenant RLS runtime context (`current_tenant_id()`, `is_platform_admin()`)
 
 ### Key Design Decisions
 
 - **Decimal arithmetic** for all monetary values (`shopspring/decimal`)
 - **Partial indexes** for hot query paths (active reservations, open folios)
 - **Trigram indexes** for fuzzy guest search
-- **RLS policies** as defense-in-depth (not enforced by default — requires restricted DB role)
-- **Automated backups** every 6 hours with 7-day retention
+- **RLS policies enforced** via `stayflow_app` role with `FORCE ROW LEVEL SECURITY` on all tenant tables
+- **Dual connection pool**: Owner pool (migrations/admin) + App pool (tenant queries, RLS-restricted)
+- **Automated backups** every 6 hours with 7-day retention + optional GPG encryption + healthcheck monitoring
+
+---
+
+## Test Coverage
+
+### Backend (Go)
+
+| Package | Coverage | Focus |
+|---------|----------|-------|
+| `property/domain` | 100% | Unit status validation |
+| `reservation/domain` | 100% | Status machine, booking source validation |
+| `shared/money` | 100% | Decimal arithmetic, GST calculations |
+| `shared/response` | 100% | API response formatting |
+| `shared/pagination` | 93.3% | Cursor & offset pagination |
+| `shared/validation` | 91.7% | Input validation, snake_case field names |
+| `config` | 86.0% | All env loading, production validation |
+| `shared/middleware` | 76.8% | CSRF, rate limiting, metrics, health, body size |
+| `billing/service` | 66.8% | PDF generation, GST SAC codes, amount-to-words |
+| `auth/service` | 29.2% | JWT validation (incl. none-alg attack), password complexity, role hierarchy |
+| `saas/service` | 37.8% | Subscription lifecycle, plan limits, billing events |
+
+Integration tests (`backend/tests/integration/`) cover end-to-end flows:
+- Tenant registration → Login → Property → Reservations
+- Full API lifecycle with real PostgreSQL
+
+### Frontend (TypeScript/React)
+
+- **9 test files, 219 tests** — all passing (Vitest + Testing Library)
+- Landing page, Command palette, component interactions
 
 ---
 
