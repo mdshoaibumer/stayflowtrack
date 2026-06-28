@@ -41,6 +41,7 @@ import (
 	reshandler "github.com/stayflow/stayflow-track/internal/modules/reservation/handler"
 	resrepo "github.com/stayflow/stayflow-track/internal/modules/reservation/repository"
 	resservice "github.com/stayflow/stayflow-track/internal/modules/reservation/service"
+	"github.com/stayflow/stayflow-track/internal/platform/database"
 	"github.com/stayflow/stayflow-track/internal/platform/storage"
 	"github.com/stayflow/stayflow-track/internal/shared/audit"
 )
@@ -145,15 +146,16 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 
 func buildServer(pool *pgxpool.Pool, jwtCfg config.JWTConfig) *httptest.Server {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	tenantDB := database.NewTenantPool(pool)
 
 	// Repos
 	authRepo := authrepo.New(pool)
-	propRepo := proprepo.New(pool)
-	guestRepo := guestrepo.New(pool)
-	resRepo := resrepo.New(pool)
-	billingRepo := billingrepo.New(pool)
-	hkRepo := hkrepo.New(pool)
-	notifRepo := notifrepo.New(pool)
+	propRepo := proprepo.New(tenantDB)
+	guestRepo := guestrepo.New(tenantDB)
+	resRepo := resrepo.New(tenantDB)
+	billingRepo := billingrepo.New(tenantDB)
+	hkRepo := hkrepo.New(tenantDB)
+	notifRepo := notifrepo.New(tenantDB)
 
 	// Services
 	authSvc := authservice.New(authRepo, jwtCfg)

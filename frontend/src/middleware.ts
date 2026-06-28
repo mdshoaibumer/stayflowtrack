@@ -7,7 +7,13 @@ import type { NextRequest } from "next/server";
  */
 export function middleware(_request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(_request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 
   const isDev =
     process.env.NODE_ENV === "development" ||
@@ -22,6 +28,7 @@ export function middleware(_request: NextRequest) {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
+        "object-src 'none'",
         `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}`,
         "frame-ancestors 'none'",
         "base-uri 'self'",
@@ -30,9 +37,11 @@ export function middleware(_request: NextRequest) {
     : [
         "default-src 'self'",
         `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-        `style-src 'self' 'nonce-${nonce}'`,
+        `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+        "style-src-attr 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
+        "object-src 'none'",
         `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}`,
         "frame-ancestors 'none'",
         "base-uri 'self'",

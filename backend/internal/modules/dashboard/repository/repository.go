@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stayflow/stayflow-track/internal/modules/dashboard/domain"
+	"github.com/stayflow/stayflow-track/internal/platform/database"
 )
 
 type Repository struct {
-	pool *pgxpool.Pool
+	pool *database.TenantPool
 }
 
-func New(pool *pgxpool.Pool) *Repository {
+func New(pool *database.TenantPool) *Repository {
 	return &Repository{pool: pool}
 }
 

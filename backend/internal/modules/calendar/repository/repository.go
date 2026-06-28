@@ -7,16 +7,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stayflow/stayflow-track/internal/modules/calendar/domain"
+	"github.com/stayflow/stayflow-track/internal/platform/database"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
 )
 
 type Repository struct {
-	pool *pgxpool.Pool
+	pool *database.TenantPool
 }
 
-func New(pool *pgxpool.Pool) *Repository {
+func New(pool *database.TenantPool) *Repository {
 	return &Repository{pool: pool}
 }
 

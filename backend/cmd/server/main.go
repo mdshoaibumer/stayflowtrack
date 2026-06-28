@@ -80,6 +80,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to connect to database")
 	}
 	defer db.Close()
+	tenantDB := database.NewTenantPool(db)
 
 	store, err := storage.New(cfg.Storage)
 	if err != nil {
@@ -91,17 +92,17 @@ func main() {
 
 	// Repositories
 	authRepo := authrepo.New(db)
-	propRepo := proprepo.New(db)
-	guestRepo := guestrepo.New(db)
-	resRepo := resrepo.New(db)
-	calendarRepo := calendarrepo.New(db)
-	checkinoutRepo := checkinoutrepo.New(db)
-	billingRepo := billingrepo.New(db)
-	hkRepo := hkrepo.New(db)
-	laundryRepo := laundryrepo.New(db)
-	dashboardRepo := dashboardrepo.New(db)
-	notifRepo := notifrepo.New(db)
-	saasRepo := saasrepo.New(db)
+	propRepo := proprepo.New(tenantDB)
+	guestRepo := guestrepo.New(tenantDB)
+	resRepo := resrepo.New(tenantDB)
+	calendarRepo := calendarrepo.New(tenantDB)
+	checkinoutRepo := checkinoutrepo.New(tenantDB)
+	billingRepo := billingrepo.New(tenantDB)
+	hkRepo := hkrepo.New(tenantDB)
+	laundryRepo := laundryrepo.New(tenantDB)
+	dashboardRepo := dashboardrepo.New(tenantDB)
+	notifRepo := notifrepo.New(tenantDB)
+	saasRepo := saasrepo.New(tenantDB)
 
 	// Notification provider (env-driven: NOTIFICATION_PROVIDER=log|gupshup)
 	var notifProvider notifprovider.Provider
@@ -145,7 +146,7 @@ func main() {
 	laundrySvc := laundryservice.New(laundryRepo)
 	dashboardSvc := dashboardservice.New(dashboardRepo)
 	saasSvc := saasservice.New(saasRepo, razorpayClient)
-	opsSvc := opsservice.New(db)
+	opsSvc := opsservice.New(tenantDB)
 
 	// Handlers
 	authHandler := handler.New(authSvc, log, auditLog)

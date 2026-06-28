@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
+	"github.com/stayflow/stayflow-track/internal/platform/database"
 
 	"github.com/stayflow/stayflow-track/internal/modules/operations/domain"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
@@ -16,10 +16,10 @@ import (
 
 // Service handles extended hospitality operations.
 type Service struct {
-	pool *pgxpool.Pool
+	pool *database.TenantPool
 }
 
-func New(pool *pgxpool.Pool) *Service {
+func New(pool *database.TenantPool) *Service {
 	return &Service{pool: pool}
 }
 

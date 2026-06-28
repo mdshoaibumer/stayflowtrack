@@ -85,11 +85,11 @@ DB_PASSWORD=<openssl rand -base64 32>
 DB_NAME=stayflow_track
 DB_HOST=postgres
 DB_PORT=5432
-DB_SSL_MODE=disable
+DB_SSL_MODE=require
 DB_MAX_OPEN_CONNS=25
 DB_MAX_IDLE_CONNS=10
 DB_MAX_LIFETIME=5m
-DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=require
 
 # ─── JWT Authentication ───────────────────────────────────────
 JWT_ACCESS_SECRET=<openssl rand -base64 48>

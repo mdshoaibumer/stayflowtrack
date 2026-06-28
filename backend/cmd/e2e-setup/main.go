@@ -60,6 +60,7 @@ import (
 	saashandler "github.com/stayflow/stayflow-track/internal/modules/saas/handler"
 	saasrepo "github.com/stayflow/stayflow-track/internal/modules/saas/repository"
 	saasservice "github.com/stayflow/stayflow-track/internal/modules/saas/service"
+	"github.com/stayflow/stayflow-track/internal/platform/database"
 	"github.com/stayflow/stayflow-track/internal/platform/storage"
 	"github.com/stayflow/stayflow-track/internal/shared/audit"
 	"github.com/stayflow/stayflow-track/internal/shared/middleware"
@@ -117,6 +118,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to run migrations")
 	}
 	log.Info().Msg("✓ All migrations applied")
+	tenantDB := database.NewTenantPool(pool)
 
 	// ─── 3. Build and start the HTTP server (mirrors cmd/server) ───
 	jwtCfg := config.JWTConfig{
@@ -133,17 +135,17 @@ func main() {
 
 	// Repos
 	authRepo := authrepo.New(pool)
-	propRepo := proprepo.New(pool)
-	guestRepo := guestrepo.New(pool)
-	resRepo := resrepo.New(pool)
-	calendarRepo := calendarrepo.New(pool)
-	checkinoutRepo := checkinoutrepo.New(pool)
-	billingRepo := billingrepo.New(pool)
-	hkRepo := hkrepo.New(pool)
-	laundryRepo := laundryrepo.New(pool)
-	dashboardRepo := dashboardrepo.New(pool)
-	notifRepo := notifrepo.New(pool)
-	saasRepo := saasrepo.New(pool)
+	propRepo := proprepo.New(tenantDB)
+	guestRepo := guestrepo.New(tenantDB)
+	resRepo := resrepo.New(tenantDB)
+	calendarRepo := calendarrepo.New(tenantDB)
+	checkinoutRepo := checkinoutrepo.New(tenantDB)
+	billingRepo := billingrepo.New(tenantDB)
+	hkRepo := hkrepo.New(tenantDB)
+	laundryRepo := laundryrepo.New(tenantDB)
+	dashboardRepo := dashboardrepo.New(tenantDB)
+	notifRepo := notifrepo.New(tenantDB)
+	saasRepo := saasrepo.New(tenantDB)
 
 	// Services
 	notifProvider := notifprovider.NewLogProvider()
@@ -159,7 +161,7 @@ func main() {
 	laundrySvc := laundryservice.New(laundryRepo)
 	dashboardSvc := dashboardservice.New(dashboardRepo)
 	saasSvc := saasservice.New(saasRepo, nil) // no razorpay in e2e
-	opsSvc := opsservice.New(pool)
+	opsSvc := opsservice.New(tenantDB)
 
 	auditLog := audit.New(pool)
 

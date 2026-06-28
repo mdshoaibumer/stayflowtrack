@@ -34,4 +34,5 @@ ALTER TABLE notification_templates DISABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE check_in_details DISABLE ROW LEVEL SECURITY;
 
+DROP FUNCTION IF EXISTS is_platform_admin();
 DROP FUNCTION IF EXISTS current_tenant_id();

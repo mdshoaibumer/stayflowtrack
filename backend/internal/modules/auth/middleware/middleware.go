@@ -11,6 +11,7 @@ import (
 
 	"github.com/stayflow/stayflow-track/internal/modules/auth/domain"
 	"github.com/stayflow/stayflow-track/internal/modules/auth/service"
+	"github.com/stayflow/stayflow-track/internal/platform/database"
 	apperrors "github.com/stayflow/stayflow-track/internal/shared/errors"
 	"github.com/stayflow/stayflow-track/internal/shared/response"
 )
@@ -74,6 +75,7 @@ func TenantContext(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), tenantKey, claims.TenantID)
+		ctx = database.WithTenantID(ctx, claims.TenantID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -133,6 +135,6 @@ func (m *AuthMiddleware) RequirePlatformAdmin(next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(database.WithPlatformAdmin(r.Context())))
 	})
 }

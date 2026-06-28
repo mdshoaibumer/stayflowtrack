@@ -9,6 +9,11 @@
 -- The docker-compose and deploy scripts handle this automatically via STAYFLOW_APP_DB_PASSWORD.
 DO $$
 BEGIN
+    -- Ensure the parent stayflow role exists (e.g. in test environments)
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'stayflow') THEN
+        CREATE ROLE stayflow;
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'stayflow_app') THEN
         CREATE ROLE stayflow_app LOGIN IN ROLE stayflow;
         -- Password must be set separately via ALTER ROLE after creation.
@@ -45,7 +50,7 @@ ALTER TABLE notification_templates FORCE ROW LEVEL SECURITY;
 ALTER TABLE notification_logs FORCE ROW LEVEL SECURITY;
 ALTER TABLE check_in_details FORCE ROW LEVEL SECURITY;
 
--- The stayflow_app role must set app.current_tenant_id at connection time.
--- The application's database.SetTenantContext() already does this.
+-- The stayflow_app role must set app.current_tenant/app.current_tenant_id
+-- inside each tenant transaction. The application's TenantPool does this.
 
 COMMENT ON ROLE stayflow_app IS 'Restricted application role subject to RLS policies. Connect the app with this role in production.';
