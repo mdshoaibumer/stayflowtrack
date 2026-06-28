@@ -255,3 +255,152 @@ func TestLoad_CORSMultipleOrigins(t *testing.T) {
 		t.Errorf("expected 2 origins, got %d", len(cfg.CORS.AllowedOrigins))
 	}
 }
+
+func TestLoad_ProductionValidation_SSLDisabled(t *testing.T) {
+	setEnvs(t, map[string]string{
+		"APP_ENV":            "production",
+		"DB_PASSWORD":        "a-production-db-credential-minimum-32chars-long-ok",
+		"DB_SSL_MODE":        "disable",
+		"DB_APP_USER":        "stayflow_app",
+		"DB_APP_PASSWORD":    "app-role-password-for-rls-testing",
+		"JWT_ACCESS_SECRET":  "production-access-secret-that-is-long-enough-and-secure",
+		"JWT_REFRESH_SECRET": "production-refresh-secret-that-is-also-long-and-different",
+	})
+
+	_, err := Load()
+	if err == nil {
+		t.Error("expected error for DB_SSL_MODE=disable in production")
+	}
+}
+
+func TestLoad_ProductionValidation_MissingAppUser(t *testing.T) {
+	setEnvs(t, map[string]string{
+		"APP_ENV":            "production",
+		"DB_PASSWORD":        "a-production-db-credential-minimum-32chars-long-ok",
+		"DB_SSL_MODE":        "require",
+		"DB_APP_USER":        "",
+		"DB_APP_PASSWORD":    "",
+		"JWT_ACCESS_SECRET":  "production-access-secret-that-is-long-enough-and-secure",
+		"JWT_REFRESH_SECRET": "production-refresh-secret-that-is-also-long-and-different",
+	})
+
+	_, err := Load()
+	if err == nil {
+		t.Error("expected error for missing DB_APP_USER in production")
+	}
+}
+
+func TestLoad_ProductionValidation_UnsafeDBPassword(t *testing.T) {
+	setEnvs(t, map[string]string{
+		"APP_ENV":            "production",
+		"DB_PASSWORD":        "please-change-this-password-its-too-long-enough",
+		"DB_SSL_MODE":        "require",
+		"DB_APP_USER":        "stayflow_app",
+		"DB_APP_PASSWORD":    "app-role-password-for-rls-testing",
+		"JWT_ACCESS_SECRET":  "production-access-secret-that-is-long-enough-and-secure",
+		"JWT_REFRESH_SECRET": "production-refresh-secret-that-is-also-long-and-different",
+	})
+
+	_, err := Load()
+	if err == nil {
+		t.Error("expected error for DB_PASSWORD containing 'change'")
+	}
+}
+
+func TestLoad_ProductionValidation_ShortDBPassword(t *testing.T) {
+	setEnvs(t, map[string]string{
+		"APP_ENV":            "production",
+		"DB_PASSWORD":        "short-pass",
+		"DB_SSL_MODE":        "require",
+		"DB_APP_USER":        "stayflow_app",
+		"DB_APP_PASSWORD":    "app-role-password-for-rls-testing",
+		"JWT_ACCESS_SECRET":  "production-access-secret-that-is-long-enough-and-secure",
+		"JWT_REFRESH_SECRET": "production-refresh-secret-that-is-also-long-and-different",
+	})
+
+	_, err := Load()
+	if err == nil {
+		t.Error("expected error for DB_PASSWORD < 32 chars in production")
+	}
+}
+
+func TestLoad_EmailConfig(t *testing.T) {
+	setEnvs(t, map[string]string{
+		"DB_PASSWORD":        "test-password",
+		"JWT_ACCESS_SECRET":  "test-access-secret-dev",
+		"JWT_REFRESH_SECRET": "test-refresh-secret-dev",
+		"SMTP_ENABLED":       "true",
+		"SMTP_HOST":          "smtp.example.com",
+		"SMTP_PORT":          "465",
+		"SMTP_USER":          "user@example.com",
+		"SMTP_PASSWORD":      "smtp-pass",
+		"SMTP_FROM_ADDRESS":  "noreply@example.com",
+		"SMTP_FROM_NAME":     "My Hotel",
+	})
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned error: %v", err)
+	}
+
+	if !cfg.Email.Enabled {
+		t.Error("expected email enabled=true")
+	}
+	if cfg.Email.SMTPHost != "smtp.example.com" {
+		t.Errorf("expected smtp.example.com, got %s", cfg.Email.SMTPHost)
+	}
+	if cfg.Email.SMTPPort != 465 {
+		t.Errorf("expected port 465, got %d", cfg.Email.SMTPPort)
+	}
+	if cfg.Email.FromAddress != "noreply@example.com" {
+		t.Errorf("expected noreply@example.com, got %s", cfg.Email.FromAddress)
+	}
+}
+
+func TestLoad_RazorpayConfig(t *testing.T) {
+	setEnvs(t, map[string]string{
+		"DB_PASSWORD":             "test-password",
+		"JWT_ACCESS_SECRET":       "test-access-secret-dev",
+		"JWT_REFRESH_SECRET":      "test-refresh-secret-dev",
+		"RAZORPAY_KEY_ID":         "rzp_test_123",
+		"RAZORPAY_KEY_SECRET":     "secret_456",
+		"RAZORPAY_WEBHOOK_SECRET": "whsec_789",
+	})
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned error: %v", err)
+	}
+
+	if cfg.Razorpay.KeyID != "rzp_test_123" {
+		t.Errorf("expected razorpay key, got %s", cfg.Razorpay.KeyID)
+	}
+	if cfg.Razorpay.KeySecret != "secret_456" {
+		t.Errorf("expected razorpay secret")
+	}
+	if cfg.Razorpay.WebhookSecret != "whsec_789" {
+		t.Errorf("expected webhook secret")
+	}
+}
+
+func TestLoad_JWTExpirations(t *testing.T) {
+	setEnvs(t, map[string]string{
+		"DB_PASSWORD":            "test-password",
+		"JWT_ACCESS_SECRET":      "test-access-secret-dev",
+		"JWT_REFRESH_SECRET":     "test-refresh-secret-dev",
+		"JWT_ACCESS_EXPIRATION":  "30m",
+		"JWT_REFRESH_EXPIRATION": "720h",
+	})
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned error: %v", err)
+	}
+
+	if cfg.JWT.AccessExpiration.Minutes() != 30 {
+		t.Errorf("expected 30m access expiration, got %v", cfg.JWT.AccessExpiration)
+	}
+	if cfg.JWT.RefreshExpiration.Hours() != 720 {
+		t.Errorf("expected 720h refresh expiration, got %v", cfg.JWT.RefreshExpiration)
+	}
+}
