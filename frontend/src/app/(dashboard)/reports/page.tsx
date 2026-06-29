@@ -113,7 +113,22 @@ export default function ReportsPage() {
         {reports.map((r) => (
           <button
             key={r.id}
-            onClick={() => { setActiveReport(r.id); setReportData(null); }}
+            onClick={() => {
+              setActiveReport(r.id);
+              setReportData(null);
+              const today = new Date();
+              const todayStr = today.toISOString().split("T")[0];
+              if (r.id === "end_of_day" || r.id === "daily_collection") {
+                setDateRange({ start: todayStr, end: todayStr });
+              } else {
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                setDateRange({
+                  start: thirtyDaysAgo.toISOString().split("T")[0],
+                  end: todayStr,
+                });
+              }
+            }}
             className={`p-3 rounded-lg border text-left transition-colors ${
               activeReport === r.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
             }`}
@@ -157,6 +172,20 @@ export default function ReportsPage() {
                 className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
               >
                 Today
+              </button>
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  const thirtyDaysAgo = new Date();
+                  thirtyDaysAgo.setDate(today.getDate() - 30);
+                  setDateRange({
+                    start: thirtyDaysAgo.toISOString().split("T")[0],
+                    end: today.toISOString().split("T")[0],
+                  });
+                }}
+                className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+              >
+                Last 30 Days
               </button>
             </div>
           </>
