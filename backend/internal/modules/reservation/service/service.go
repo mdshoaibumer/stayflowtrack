@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,7 +76,8 @@ func (s *Service) CreateReservation(ctx context.Context, tenantID uuid.UUID, inp
 		return nil, apperrors.BadRequest("check_out_date must be after check_in_date")
 	}
 
-	if checkIn.Before(time.Now().Truncate(24 * time.Hour)) {
+	// In production, we restrict check-in dates in the past. In development or test, we allow them to facilitate demo/historical data seeding.
+	if os.Getenv("APP_ENV") == "production" && checkIn.Before(time.Now().Truncate(24 * time.Hour)) {
 		return nil, apperrors.BadRequest("check_in_date cannot be in the past")
 	}
 

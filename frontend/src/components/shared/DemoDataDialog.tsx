@@ -259,6 +259,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           deposit_amount: 5000,
           deposit_method: "card",
           id_document_type: "aadhaar",
+          id_document_number: "123456789012",
         });
         const folioData = await getJSON(`${API_BASE}/api/v1/billing/folios/reservation/${res.id}`);
         const folio = folioData?.data || folioData;
@@ -295,6 +296,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           deposit_amount: 2000,
           deposit_method: "upi",
           id_document_type: "driving_license",
+          id_document_number: "DL-9928374",
         });
         const folioData = await getJSON(`${API_BASE}/api/v1/billing/folios/reservation/${res.id}`);
         const folio = folioData?.data || folioData;
@@ -330,6 +332,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           deposit_amount: 3000,
           deposit_method: "cash",
           id_document_type: "aadhaar",
+          id_document_number: "987654321098",
         });
         const folioData = await getJSON(`${API_BASE}/api/v1/billing/folios/reservation/${res.id}`);
         const folio = folioData?.data || folioData;
@@ -366,6 +369,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           deposit_amount: 1000,
           deposit_method: "cash",
           id_document_type: "aadhaar",
+          id_document_number: "111122223333",
         });
         const folioData = await getJSON(`${API_BASE}/api/v1/billing/folios/reservation/${res.id}`);
         const folio = folioData?.data || folioData;
@@ -400,6 +404,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           assigned_unit_id: units[7]?.id,
           deposit_amount: 0,
           id_document_type: "passport",
+          id_document_number: "J8837192",
         });
         const folioData = await getJSON(`${API_BASE}/api/v1/billing/folios/reservation/${res.id}`);
         const folio = folioData?.data || folioData;
@@ -443,6 +448,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           deposit_amount: 1000,
           deposit_method: "cash",
           id_document_type: "aadhaar",
+          id_document_number: "444455556666",
         });
 
         // Get Folio and add charges + payments
@@ -497,6 +503,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
           deposit_amount: 2000,
           deposit_method: "card",
           id_document_type: "driving_license",
+          id_document_number: "DL-554433",
         });
 
         const folioData = await getJSON(`${API_BASE}/api/v1/billing/folios/reservation/${res3.id}`);
@@ -657,6 +664,7 @@ export default function DemoDataDialog({ onComplete }: DemoDataDialogProps) {
       setTimeout(() => {
         setVisible(false);
         onComplete?.();
+        window.location.reload();
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load demo data");
